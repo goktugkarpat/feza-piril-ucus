@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Pırıl'ın Uçuş Okulu</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Uçuş Okulu">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#f6b26b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="sahne" aria-label="Pırıl'ın uçuş çayırı"></div>
+<div id="arayuz"></div>
+<script src="vendor/three.js"></script>
+<script src="ses.js"></script>
+<script src="cekirdek.js"></script>
+<script src="bolumler.js"></script>
+<script src="dunya.js"></script>
+<script src="piril.js"></script>
+<script src="efekt.js"></script>
+<script src="arayuz.js"></script>
+<script src="oyun.js"></script>
+<script>
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !new URLSearchParams(location.search).has('sw0')) {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+}
+</script>
+</body>
+</html>
