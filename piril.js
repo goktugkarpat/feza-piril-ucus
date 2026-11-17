@@ -79,27 +79,40 @@ const prKanatIcGeo = [-1, 1].map(s => { // yumuşak katmanlı iç kanat tüyü/z
 // Malzemeler: yumuşak peluş (Standard + hafif iç ışık), gözler ışıktan bağımsız parlak
 const prMat = new prT.MeshStandardMaterial({ vertexColors: true, roughness: 0.68, metalness: 0.02, emissive: 0x221235, emissiveIntensity: 0.28 });
 // kenar ışığı (fresnel): koyu temalarda da iki karakter net okunsun; ışık/çizim eklemez
-const prRim = { renk: { value: new prT.Color(0xfff2e0) }, guc: { value: 0.18 } };
-function prRimEkle(m, renkU) {
+const prRim = { renk: { value: new prT.Color(0xfff2e0) }, guc: { value: 0.18 }, koyu: { value: 0 }, gece: { value: 0 }, geceB: { value: 0 } };   // gece: geniş açık kenar ışığı   // koyu: beyaz kar / parlak çöl önünde ince koyu kenar
+function prRimEkle(m, renkU, geceU) {
   m.onBeforeCompile = (sh) => {
-    sh.uniforms.prRimRenk = renkU || prRim.renk; sh.uniforms.prRimGuc = prRim.guc;
-    sh.fragmentShader = 'uniform vec3 prRimRenk; uniform float prRimGuc;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>',
-      '#include <emissivemap_fragment>\n{ float prF = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0); totalEmissiveRadiance += prRimRenk * pow(prF, 2.6) * prRimGuc; }');
+    sh.uniforms.prRimRenk = renkU || prRim.renk; sh.uniforms.prRimGuc = prRim.guc; sh.uniforms.prKoyu = prRim.koyu; sh.uniforms.prGece = geceU || prRim.gece;
+    sh.fragmentShader = 'uniform vec3 prRimRenk; uniform float prRimGuc; uniform float prKoyu; uniform float prGece;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>',
+      '#include <emissivemap_fragment>\n{ float prF = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0); totalEmissiveRadiance += prRimRenk * (pow(prF, 2.6) * prRimGuc * (1.0 - prKoyu * 1.5) + pow(prF, 1.7) * prGece); }')
+      .replace('#include <opaque_fragment>', '{ float prF2 = 1.0 - abs(dot(normalize(normal), normalize(vViewPosition))); outgoingLight *= 1.0 - prKoyu * smoothstep(0.5, 0.92, prF2); }\n#include <opaque_fragment>');
   };
   m.customProgramCacheKey = () => 'prRim';
 }
 const prMatB = prMat.clone(); prMatB.emissive.set(0x2a1608); prMatB.emissiveIntensity = 0.3;
-prRimEkle(prMat, { value: new prT.Color(0xf4e6ff) }); prRimEkle(prMatB, { value: new prT.Color(0xffe2c2) });
+const PR_EMIS_GUN = new prT.Color(0x221235), PR_EMIS_GECE = new prT.Color(0x5d4296), PR_EMISB_GUN = new prT.Color(0x2a1608), PR_EMISB_GECE = new prT.Color(0x4a2e18);
+prRimEkle(prMat, { value: new prT.Color(0xf4e6ff) }); prRimEkle(prMatB, { value: new prT.Color(0xffe2c2) }, prRim.geceB);
 let prKaranlik = -1;
 function prTemaIsik() {   // sahnenin genel aydınlığına göre (gece/koyu tema) iç ışık ve kenar ışığını artırır
   let L = 0.7; const r = typeof scene !== 'undefined' ? scene : null;
   const col = r && r.fog && r.fog.color ? r.fog.color : (r && r.background && r.background.isColor ? r.background : null);
   if (col) L = col.r * 0.3 + col.g * 0.59 + col.b * 0.11;
-  const k = clampPr((0.62 - L) / 0.4, 0, 1);
+  const k = Math.max(clampPr((0.62 - L) / 0.4, 0, 1), prOrtam.gece ? 0.9 : 0);
   prKaranlik = prKaranlik < 0 ? k : prKaranlik + (k - prKaranlik) * 0.05;
-  prMat.emissiveIntensity = 0.28 + prKaranlik * 0.2; prMatB.emissiveIntensity = 0.3 + prKaranlik * 0.55;
+  prMat.emissiveIntensity = 0.28 + prKaranlik * 0.36; prMatB.emissiveIntensity = 0.3 + prKaranlik * 0.3;
+  prMat.emissive.copy(PR_EMIS_GUN).lerp(PR_EMIS_GECE, prKaranlik); prMatB.emissive.copy(PR_EMISB_GUN).lerp(PR_EMISB_GECE, prKaranlik);   // gecede gövde bir ton açılır
+  const acikZ = prOrtam.zemin === 'kar' || prOrtam.zemin === 'buz' || prOrtam.zemin === 'ay';   // gecede de zemin açıksa: kenar ışığı yerine ince koyu kenar ağır basar
+  prRim.gece.value = prKaranlik * (acikZ ? 0.12 : 0.3); prRim.geceB.value = prKaranlik * (acikZ ? 0.06 : 0.14);
   prRim.guc.value = 0.16 + prKaranlik * 0.22;
+  // ortama göre seçilebilirlik: beyaz kar/buz, parlak kum ve bulut önünde ince koyu kenar; ışıldayan ormanda hafif parıltı
+  let sicak = 0; if (col) sicak = clampPr((col.r - col.b - 0.18) / 0.3, 0, 1);   // sıcak turuncu ortam (kanyon, gün batımı)
+  const oz = prOrtam.zemin, koyuH0 = (oz === 'kar' || oz === 'buz') ? 0.34 : (oz === 'bulut' || oz === 'kum' || oz === 'seker' || oz === 'ay') ? 0.24 : 0;
+  const koyuH = Math.max(koyuH0, sicak * 0.24);
+  prRim.koyu.value += (koyuH * (1 - prKaranlik * 0.2) - prRim.koyu.value) * 0.08;
+  if (prOrtam.hava === 'isilti') { prRim.guc.value += 0.05; prMat.emissiveIntensity += 0.04; }
 }
+// şu anki bölümün ortamı (bölüm verisinden: kiyafet, hava, zeminTur, gece)
+const prOrtam = { kiyafet: '', hava: '', zemin: '', gece: false, idx: -1 };
 const prMatGoz = new prT.MeshBasicMaterial({ vertexColors: true });
 const prMatZar = new prT.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.04, emissive: 0x6b2654, emissiveIntensity: 0.22, transparent: true, opacity: 0.86, side: prT.DoubleSide });
 const prMatYanak = new prT.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0.0, emissive: 0xff4d88, emissiveIntensity: 0.14, transparent: true, opacity: 0.58 });
@@ -270,7 +283,8 @@ function prPirilKur() {
   R.s = { olcek: 1, yaw: 0.5, egim: 0, ez: 1, gozB: 1, kanatAc: 0.3, kanatCirp: 0, kanatEsne: 0, k0x: 0.1, k0z: -0.3, k1x: 0.1, k1z: 0.3, basX: 0, basY: 0, basZ: 0,
     kuyX: 0, kuyY: 0, kuyZ: 0, kasY: 0, kasR: -0.1, sacX: 0, sacZ: 0, sacS: 1, ayakX: 0, yanak: 0, ofX: 0, ofY: 0.42 };
   R.v = {}; for (const k in R.s) R.v[k] = 0;
-  R.zaman = { kanat: 9, sek: 9, yildiz: 9, halka: 9, durum: 0, kirp: 2.5, kavus: 9, birak: 9, salla: 9, seviye: 9, basla: 9, ruzgar: 9, kanatBos: 9, takla: 9 };
+  R.zaman = { kanat: 9, sek: 9, yildiz: 9, halka: 9, durum: 0, kirp: 2.5, kavus: 9, birak: 9, salla: 9, seviye: 9, basla: 9, ruzgar: 9, kanatBos: 9, takla: 9, simsek: 9, kanatSira: 9, dindi: 9 };
+  R.serit = 0.2; R.seritV = 0; R.silk = false; R.ekDon = 0;
   R.sekTur = ''; R.onX = 0; R.onY = 0; R.onVy = 0; R.ivY = 0; R.ivX = 0; R.cifte = 0;
   R.sonDurum = ''; R.yon1 = 1; R.oncekiX = 0; R.mutlu = 0; R.yerT = -1; R.dalga = true; R.bekleOfs = 0;
   return R;
@@ -379,15 +393,286 @@ function prBilboKur() {
   R.bebek = prGrup(R.goz); R.bebek.add(prBitir(yBb, prMatGoz)); R.bakX = 0; R.bakY = 0;   // gözbebekleri Pırıl'ı izler
   R.s = { yaw: -0.75, basY: 0, basX: 0, basZ: 0, zip: 0, pati: 0, otur: 0, egil: 0, kulX: 0, kulZ: 0, kulS: 1, ofX: 0, kuyGen: 0.45, gozB: 1 };
   R.v = {}; for (const k in R.s) R.v[k] = 0;
-  R.zaman = { iska: 9, kirp: 3.3, kavus: 9, heyecan: 9, basla: 9 };
+  R.zaman = { iska: 9, kirp: 3.3, kavus: 9, heyecan: 9, basla: 9, simsek: 9, dindi: 9 };
+  R.kos = null; R.kosX = null;   // 'bilboKos': { x0, x1, t, sure, yon } — Pırıl'ın yanına koşu
+  R.silk = false; R.ekDon = 0;
   R.kuyFaz = 0; R.zipFaz = 0; R.oncZip = 0; R.iskaX = 0; R.cifte = 0;
   return R;
 }
 
+// ---------- Ortama göre kıyafetler (u2): bölümün `kiyafet` alanı → Pırıl ve Bilbo'ya minik aksesuarlar ----------
+// Her parça birleştirilmiş tek ağ; atkı uçları ve pelerin her karede yeniden dizilen küçük bir ızgara (yeni nesne yok).
+const prMatKumas = new prT.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0.0, emissive: 0x221235, emissiveIntensity: 0.3, side: prT.DoubleSide });
+prRimEkle(prMatKumas, { value: new prT.Color(0xfff0e6) });
+const prMatCam = new prT.MeshStandardMaterial({ color: 0xe6f6ff, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.2, depthWrite: false, emissive: 0x9fd8ff, emissiveIntensity: 0.06 });
+prMatCam.onBeforeCompile = (sh) => {   // cam fanus: ortası saydam, kenarları parlak (fresnel)
+  sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
+    '{ float prF = 1.0 - abs(dot(normalize(normal), normalize(vViewPosition))); outgoingLight += vec3(0.72, 0.9, 1.0) * pow(prF, 1.8) * 0.95; diffuseColor.a = mix(0.1, 0.9, pow(prF, 2.0)); }\n#include <opaque_fragment>');
+};
+prMatCam.customProgramCacheKey = () => 'prCam';
+const prSilGeo = new prT.CylinderGeometry(1, 1, 1, 12, 1); prSilGeo.translate(0, 0.5, 0);   // tabanı 0'da
+const prKureXS = new prT.SphereGeometry(1, 6, 4);   // minik taç yaprakları için çok hafif küre
+const prHalkaInce = new prT.TorusGeometry(1, 0.09, 8, 28);
+const prFanusGeo = new prT.SphereGeometry(1, 26, 14, 0, Math.PI * 2, 0, Math.PI * 0.76);
+const prE2 = new prT.Euler(0, 0, 0, 'YXZ'), prM4b = new prT.Matrix4(), prQ2 = new prT.Quaternion(), prVd = new prT.Vector3(), prVd2 = new prT.Vector3(), prVb = new prT.Vector3(), prVw = new prT.Vector3();
+let prKiyafet = null;   // { ad, parcalar: [mesh], seritler: [mesh], semsiye }
+
+function prTabanAyarla(y, px, py, pz, rx, ry, rz, s, sy) {
+  prE2.set(rx || 0, ry || 0, rz || 0); prQ.setFromEuler(prE2);
+  y.taban = new prT.Matrix4().compose(prV.set(px, py, pz), prQ, prS.set(s, sy === undefined ? s : sy, s));
+}
+// minik çiçek (5 taç yaprak + göbek), yerel +z'ye bakar; y.taban'a göre yerleşir
+function prCicek(y, px, py, pz, r, renk, gobek, yonAci, egil) {
+  const anaT = y.taban; prE2.set(egil || 0, yonAci || 0, 0); prQ.setFromEuler(prE2);
+  prM4b.compose(prV.set(px, py, pz), prQ, prS.set(r, r, r)); y.taban = anaT ? anaT.clone().multiply(prM4b) : prM4b.clone();
+  for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2 + 0.3; prKat(y, prKureXS, renk, Math.cos(a) * 0.55, Math.sin(a) * 0.55, 0, 0.42, 0.3, 0.16, 0, 0, a, 0.05); }
+  prKat(y, prKureM, gobek || 0xffd84a, 0, 0, 0.1, 0.3, 0.3, 0.2, 0, 0, 0, 0.1);
+  y.taban = anaT;
+}
+// şerit ızgarası: her şerit { ax, ay, az, L, W, nL, nW, acOlc, genis, sar, faz, renk(u, w) }
+function prSeritKur(liste, mat) {
+  const p = [], n = [], c = [], ix = [];
+  for (const s of liste) {
+    s.b = p.length / 3;
+    for (let i = 0; i <= s.nL; i++) for (let j = 0; j <= s.nW; j++) { p.push(0, 0, 0); n.push(0, 0, 1); prC.set(s.renk(i / s.nL, j / s.nW)); c.push(prC.r, prC.g, prC.b); }
+    for (let i = 0; i < s.nL; i++) for (let j = 0; j < s.nW; j++) { const a = s.b + i * (s.nW + 1) + j; ix.push(a, a + s.nW + 1, a + 1, a + 1, a + s.nW + 1, a + s.nW + 2); }
+  }
+  const g = new prT.BufferGeometry();
+  g.setAttribute('position', new prT.Float32BufferAttribute(p, 3).setUsage(prT.DynamicDrawUsage));
+  g.setAttribute('normal', new prT.Float32BufferAttribute(n, 3).setUsage(prT.DynamicDrawUsage));
+  g.setAttribute('color', new prT.Float32BufferAttribute(c, 3)); g.setIndex(ix);
+  const m = new prT.Mesh(g, mat); m.frustumCulled = false; m.userData.seritler = liste;
+  return m;
+}
+// aci: 0 = aşağı sarkar, ~1.5 = dümdüz geriye savrulur; dalga: dalgalanma genliği; f: dalga hızı
+// Dn: yerel "aşağı" (yerçekimi), Bk: yerel "geri" (uçuşun tersi), Wx: genişlik ekseni — hepsi gövdenin yerel ekseninde birim vektör
+function prSeritGuncelle(m, aci, dalga, f, t, Dn, Bk, Wx) {
+  const pos = m.geometry.attributes.position, nor = m.geometry.attributes.normal, P_ = pos.array, N_ = nor.array;
+  for (const s of m.userData.seritler) {
+    let cx = s.ax, cy = s.ay, cz = s.az;
+    const dl = s.L / s.nL;
+    for (let i = 0; i <= s.nL; i++) {
+      const u = i / s.nL;
+      const th = s.taban0 + aci * s.acOlc + dalga * Math.sin(t * f - u * 4.2 + s.faz) * (0.25 + u) + s.kivril * u;
+      const sn = Math.sin(th), cs = Math.cos(th);
+      const nx = -Dn.x * sn + Bk.x * cs, ny = -Dn.y * sn + Bk.y * cs, nz = -Dn.z * sn + Bk.z * cs;   // yüzey normali (geriye bakar)
+      const w = s.W * (1 + s.genis * u), xw = Math.sin(t * f * 0.8 - u * 3.5 + s.faz) * dalga * 0.07 * u;
+      for (let j = 0; j <= s.nW; j++) {
+        const wn = j / s.nW - 0.5, k = (s.b + i * (s.nW + 1) + j) * 3, sr = wn * wn * s.sar, wo = wn * w + xw;
+        P_[k] = cx + Wx.x * wo - nx * sr; P_[k + 1] = cy + Wx.y * wo - ny * sr; P_[k + 2] = cz + Wx.z * wo - nz * sr;
+        N_[k] = nx; N_[k + 1] = ny; N_[k + 2] = nz;
+      }
+      cx += (Dn.x * cs + Bk.x * sn) * dl; cy += (Dn.y * cs + Bk.y * sn) * dl; cz += (Dn.z * cs + Bk.z * sn) * dl;
+    }
+  }
+  pos.needsUpdate = true; nor.needsUpdate = true;
+}
+function prAksesuarSok() {
+  if (!prKiyafet) return;
+  for (const m of prKiyafet.parcalar) { if (m.parent) m.parent.remove(m); if (m.geometry) m.geometry.dispose(); }
+  prKiyafet = null;
+}
+const PR_ATKI = 0xf2475e, PR_ATKI2 = 0xfff3e2;
+function prAksesuarKur(ad) {
+  prAksesuarSok();
+  const R = prPiril, B = prBilbo; if (!R || !B) return;
+  const K = { ad, parcalar: [], seritler: [], semsiye: null };
+  const ekle = (ust, y, mat) => { y.taban = null; const m = prBitir(y, mat); ust.add(m); K.parcalar.push(m); return m; };
+  let y;
+  if (ad === 'atki') {
+    // Pırıl: ponponlu bere (boynuzların arasında, hafif yana yatık) + çizgili örgü atkı; uçları uçarken savrulur
+    y = prYapi(); prTabanAyarla(y, 0, 0.36, -0.08, -0.2, 0, 0.16, 0.37);
+    prKat(y, prYarim, PR_ATKI, 0, 0, 0, 1, 1.05, 1, Math.PI, 0, 0, 0.12);
+    prKat(y, prHalka, PR_ATKI2, 0, 0.55, 0, 0.86, 0.86, 0.5, Math.PI / 2, 0, 0, 0.05);
+    prKat(y, prHalka, PR_ATKI2, 0, 0.06, 0, 1.0, 1.0, 0.85, Math.PI / 2, 0, 0, 0.08);
+    prKat(y, prKure, PR_ATKI2, 0, 1.05, 0, 0.32, 0.3, 0.32, 0, 0, 0, 0.1);
+    for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + 0.4; prKat(y, prKureM, 0xffffff, Math.cos(a) * 0.16, 1.1 + Math.sin(a * 2) * 0.05, Math.sin(a) * 0.16, 0.18, 0.17, 0.18, 0, 0, 0, 0.05); }
+    ekle(R.bas, y, prMat);
+    y = prYapi(); prTabanAyarla(y, 0, 0.3, 0.02, 0.14, 0, 0, 1);
+    for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2; prKat(y, prKureM, Math.floor(k / 2) % 2 ? PR_ATKI2 : PR_ATKI, Math.sin(a) * 0.43, 0, Math.cos(a) * 0.47, 0.1, 0.085, 0.1, 0, a, 0, 0.12); }
+    prKat(y, prKure, PR_ATKI, -0.4, -0.04, -0.2, 0.12, 0.11, 0.12, 0, 0, 0, 0.12);   // düğüm
+    ekle(R.gov, y, prMat);
+    const renk = (u) => (Math.floor(u * 5.99) % 2 ? PR_ATKI2 : PR_ATKI);
+    const sm = prSeritKur([
+      { ax: -0.46, ay: 0.22, az: -0.22, L: 0.5, W: 0.14, nL: 8, nW: 1, acOlc: 1, genis: 0.15, sar: 0, faz: 0, taban0: 0.3, kivril: 0.1, renk },
+      { ax: -0.38, ay: 0.2, az: -0.3, L: 0.4, W: 0.13, nL: 7, nW: 1, acOlc: 0.88, genis: 0.15, sar: 0, faz: 1.4, taban0: 0.42, kivril: 0.08, renk }], prMatKumas);
+    R.gov.add(sm); K.parcalar.push(sm); K.seritler.push(sm);
+    // Bilbo: tasmanın yerinde kalın örgü atkı + önde sarkan ucu
+    y = prYapi(); prTabanAyarla(y, 0, 0.8, 0.16, 0.42, 0, 0, 1);
+    for (let k = 0; k < 20; k++) { const a = k / 20 * Math.PI * 2; prKat(y, prKureM, Math.floor(k / 2) % 2 ? PR_ATKI2 : 0x3fb6c8, Math.sin(a) * 0.34, 0, Math.cos(a) * 0.36, 0.095, 0.085, 0.1, 0, a, 0, 0.12); }
+    for (let k = 0; k < 4; k++) prKat(y, prKureK, k % 2 ? PR_ATKI2 : 0x3fb6c8, 0.17 + k * 0.012, -0.08 - k * 0.085, 0.36 - k * 0.012, 0.075, 0.065, 0.06, 0.3, 0, -0.15, 0.12);
+    ekle(B.ez, y, prMatB);
+  } else if (ad === 'yagmurluk') {
+    // Pırıl: sarı yağmur şapkası (arkası uzun sarkık siperli); Bilbo: iri yaprak şemsiyenin altında
+    y = prYapi(); prTabanAyarla(y, 0, 0.36, -0.06, -0.2, 0, 0.1, 0.36);
+    prKat(y, prYarim, 0xffd23a, 0, 0, 0, 1, 0.9, 1, Math.PI, 0, 0, 0.12);
+    prKat(y, prKureB, 0xffc21f, 0, 0.02, -0.12, 1.55, 0.1, 1.6, 0.18, 0, 0, 0.1);
+    prKat(y, prHalka, 0xffe680, 0, 0.1, 0, 0.98, 0.98, 0.6, Math.PI / 2, 0, 0, 0.05);
+    prKat(y, prDamla, 0x6ec8ff, 0.62, 0.42, 0.62, 0.16, 0.28, 0.12, 0.2, 0.8, -0.35, 0.1);   // minik damla rozeti
+    ekle(R.bas, y, prMat);
+    const g = prGrup(B.kok, 0, 0, 0); g.userData.ek = true;
+    y = prYapi(); prTabanAyarla(y, 0.35, 0, -0.95, 0, 0, -0.05, 1);
+    prKat(y, prSilGeo, 0x5f9a3c, 0, 0, 0, 0.04, 1.9, 0.04, 0, 0, 0, 0.1);              // sap (yaprağa doğru eğik)
+    prKat(y, prYarim, 0x63c552, -0.3, 1.86, 0.62, 1.0, 0.36, 0.9, Math.PI, 0.3, 0.12, 0.25);   // yaprak çatı
+    prKat(y, prKureB, 0x4fae45, -0.3, 1.84, 0.62, 1.0, 0.06, 0.9, 0, 0.3, 0.12, 0.05);
+    prKat(y, prKureK, 0x9be27c, -0.3, 2.2, 0.62, 0.06, 0.02, 0.86, 0.0, 0.3, 0.12, 0.05);     // orta damar
+    prKat(y, prKureK, 0x63c552, 0.0, 1.94, 1.5, 0.14, 0.08, 0.2, 0.5, 0.3, 0.12, 0.2);           // kıvrık uç
+    ekle(g, y, prMatB); K.semsiye = g; K.parcalar.push(g);
+  } else if (ad === 'gunes' || ad === 'gunes_k') {
+    // Pırıl: çölde çiçekli hasır şapka, kumsalda alnına itilmiş kalp güneş gözlüğü; Bilbo: kenarlı güneş şapkası
+    y = prYapi();
+    if (ad === 'gunes_k') {
+      prTabanAyarla(y, 0, 0.4, 0.33, -0.4, 0, 0.06, 1.1);
+      for (const x of [-1, 1]) {
+        prKat(y, prKalpGeo, 0xff5fa8, x * 0.135, 0, -0.01, 0.25, 0.25, 0.5, 0, 0, 0, 0.1);
+        prKat(y, prKalpGeo, 0x4b3c8f, x * 0.135, 0.004, 0.025, 0.19, 0.19, 0.4, 0, 0, 0, 0.05);
+        prKat(y, prKureM, 0xffffff, x * 0.135 - 0.035, 0.035, 0.055, 0.024, 0.02, 0.01, 0, 0, 0, 0);
+      }
+      prKat(y, prKureK, 0xff5fa8, 0, 0.03, 0, 0.05, 0.022, 0.022, 0, 0, 0, 0.1);
+      ekle(R.bas, y, prMat); y = prYapi();
+    } else {
+    prTabanAyarla(y, 0, 0.43, -0.05, -0.06, 0, 0.12, 0.33);
+    prKat(y, prYarim, 0xf3d27c, 0, 0, 0, 0.82, 0.78, 0.82, Math.PI, 0, 0, 0.15);
+    prKat(y, prKureB, 0xf7dc8e, 0, 0.0, 0, 1.75, 0.07, 1.75, 0, 0, 0, 0.12);
+    prKat(y, prHalka, 0xff7fb4, 0, 0.12, 0, 0.84, 0.84, 0.75, Math.PI / 2, 0, 0, 0.05);
+    for (let k = 0; k < 3; k++) prKat(y, prHalka, 0xe2bd62, 0, 0.003, 0, 1.15 + k * 0.22, 1.15 + k * 0.22, 0.1, Math.PI / 2, 0, 0, 0);   // hasır örgü halkaları
+    prCicek(y, -0.55, 0.3, 0.6, 0.38, 0xffffff, 0xffc93a, -0.8, -0.3);
+    prCicek(y, -0.85, 0.2, 0.15, 0.3, 0xff9fd0, 0xffd84a, -1.4, -0.3);
+    ekle(R.bas, y, prMat); y = prYapi();
+    }
+    prTabanAyarla(y, 0, 0.27, -0.02, -0.12, 0, -0.1, 0.27);
+    prKat(y, prYarim, 0x7ed3f2, 0, 0, 0, 0.92, 0.8, 0.92, Math.PI, 0, 0, 0.15);
+    prKat(y, prHalka, 0xfff4d8, 0, 0.1, 0, 0.93, 0.93, 0.8, Math.PI / 2, 0, 0, 0.05);
+    prKat(y, prKureB, 0x9ae0f7, 0, 0.0, 0, 1.55, 0.08, 1.55, 0, 0, 0, 0.12);
+    prCicek(y, 0.75, 0.35, 0.45, 0.32, 0xfff07a, 0xff8a3a, 1.0, -0.3);
+    ekle(B.bas, y, prMatB);
+  } else if (ad === 'uzay') {
+    // ikisine de yuvarlak cam uzay fanusu: parlak beyaz yaka halkası + minik anten
+    const fanus = (ust, cx, cy, cz, r, mat, antenRenk) => {
+      const yf = prYapi(); prKat(yf, prFanusGeo, 0xffffff, cx, cy, cz, r, r, r, 0, 0, 0, 0);
+      const mc = prBitir(yf, prMatCam); mc.renderOrder = 3; ust.add(mc); K.parcalar.push(mc);
+      const yy = cy + r * Math.cos(Math.PI * 0.76), rr = r * Math.sin(Math.PI * 0.76);
+      const yh = prYapi();
+      prKat(yh, prHalkaInce, 0xe9eefb, cx, yy, cz, rr * 0.98, rr * 0.98, rr * 1.5, Math.PI / 2, 0, 0, 0.25);
+      for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; prKat(yh, prKureK, k % 2 ? 0x6fe3ff : 0xffd84a, cx + Math.sin(a) * rr * 1.06, yy + 0.02, cz + Math.cos(a) * rr * 1.06, r * 0.045, r * 0.045, r * 0.045, 0, 0, 0, 0); }
+      prKat(yh, prSilGeo, 0xdfe6f5, cx, cy + r * 0.97, cz, r * 0.025, r * 0.22, r * 0.025, 0, 0, 0, 0);
+      prKat(yh, prKure, antenRenk, cx, cy + r * 1.22, cz, r * 0.075, r * 0.075, r * 0.075, 0, 0, 0, 0.1);
+      prKat(yh, prKureK, 0xffffff, cx - r * 0.42, cy + r * 0.55, cz + r * 0.6, r * 0.06, r * 0.2, r * 0.03, -0.6, -0.55, 0.65, 0);   // cam üstü parıltı çizgisi
+      prKat(yh, prKureK, 0xffffff, cx - r * 0.6, cy + r * 0.3, cz + r * 0.68, r * 0.03, r * 0.06, r * 0.02, -0.4, -0.7, 0.5, 0);
+      return ekle(ust, yh, mat);
+    };
+    fanus(R.bas, 0, 0.07, 0.03, 0.8, prMat, 0xff7fb4);
+    fanus(B.bas, 0, -0.03, 0.06, 0.62, prMatB, 0xffd84a);
+  } else if (ad === 'cicektaci') {
+    y = prYapi(); prTabanAyarla(y, 0, 0.43, -0.04, -0.12, 0, 0.08, 0.32);
+    const renkler = [0xff9fd0, 0xffffff, 0xffc0e0, 0xfff07a, 0xd9b8ff, 0xffffff, 0xff9fd0, 0xffc0e0];
+    for (let k = 0; k < 8; k++) {
+      const a = k / 8 * Math.PI * 2 + 0.2;
+      prKat(y, prKureXS, 0x7fd06a, Math.sin(a + 0.4) * 1.0, -0.02, Math.cos(a + 0.4) * 1.0, 0.2, 0.06, 0.12, 0, a + 0.4, 0, 0.1);   // yapraklar
+      prCicek(y, Math.sin(a) * 1.02, 0.1, Math.cos(a) * 1.02, 0.46, renkler[k], 0xffd84a, a, -0.85);
+    }
+    ekle(R.bas, y, prMat);
+    y = prYapi(); prTabanAyarla(y, 0, 0.27, 0.0, -0.1, 0, -0.08, 0.24);
+    for (let k = 0; k < 7; k++) {
+      const a = k / 7 * Math.PI * 2;
+      prKat(y, prKureXS, 0x7fd06a, Math.sin(a + 0.45) * 1.0, -0.02, Math.cos(a + 0.45) * 1.0, 0.22, 0.06, 0.12, 0, a + 0.45, 0, 0.1);
+      prCicek(y, Math.sin(a) * 1.02, 0.08, Math.cos(a) * 1.02, 0.38, renkler[(k + 3) % 8], 0xffd84a, a, -0.75);
+    }
+    ekle(B.bas, y, prMatB);
+  } else if (ad === 'parti') {
+    const sapka = (ust, px, py, pz, rz, s, ana, benek, mat) => {
+      const yp = prYapi(); prTabanAyarla(yp, px, py, pz, -0.12, 0, rz, s);
+      prKat(yp, prKoni, ana, 0, 0, 0, 0.42, 1.25, 0.42, 0, 0, 0, 0.15);
+      for (let k = 0; k < 7; k++) { const h = 0.15 + (k % 4) * 0.24, a = k * 2.1, rr = 0.42 * (1 - h / 1.25) + 0.01; prKat(yp, prKureK, benek[k % benek.length], Math.sin(a) * rr, h, Math.cos(a) * rr, 0.07, 0.07, 0.04, 0, a, 0, 0); }
+      prKat(yp, prHalka, 0xffffff, 0, 0.02, 0, 0.42, 0.42, 0.5, Math.PI / 2, 0, 0, 0.05);
+      prKat(yp, prKure, 0xfff07a, 0, 1.3, 0, 0.17, 0.17, 0.17, 0, 0, 0, 0.1);
+      for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; prKat(yp, prKureK, [0xff7fb4, 0x6fe3ff, 0xffffff, 0xb6f598, 0xffb35a][k], Math.cos(a) * 0.1, 1.33 + Math.sin(a) * 0.08, Math.sin(a) * 0.1, 0.08, 0.08, 0.08, 0, 0, 0, 0); }
+      return ekle(ust, yp, mat);
+    };
+    sapka(R.bas, 0.04, 0.42, -0.02, -0.26, 0.42, 0x6fd0ff, [0xffe45a, 0xff7fb4, 0xffffff], prMat);
+    sapka(B.bas, -0.04, 0.29, 0.0, 0.2, 0.36, 0xff8fc4, [0xffe45a, 0x6fe3ff, 0xffffff], prMatB);
+  } else if (ad === 'pelerin') {
+    // Pırıl: kahraman pelerini (omuzlarda altın düğmeler; uçarken savrulur); Bilbo: minik altın taç
+    y = prYapi(); prTabanAyarla(y, 0, 0, 0, 0, 0, 0, 1);
+    for (const x of [-1, 1]) { prKat(y, prKure, 0xffcf3a, x * 0.27, 0.34, -0.28, 0.07, 0.07, 0.05, 0, 0, 0, 0.3); prKat(y, prKureK, 0xfff2a8, x * 0.27 - 0.015, 0.355, -0.24, 0.025, 0.025, 0.015, 0, 0, 0, 0); }
+    prKat(y, prHalka, 0xd8323f, 0, 0.32, -0.04, 0.4, 0.42, 0.3, Math.PI / 2 + 0.2, 0, 0, 0.1);   // yaka
+    ekle(R.gov, y, prMat);
+    const sm = prSeritKur([{ ax: 0, ay: 0.36, az: -0.42, L: 1.45, W: 0.72, nL: 9, nW: 6, acOlc: 1, genis: 0.85, sar: 0.22, faz: 0, taban0: 0.72, kivril: 0.16,
+      renk: (u, w) => u > 0.87 ? 0xffcf3a : (Math.abs(w - 0.5) < 0.1 && u > 0.35 && u < 0.62 ? 0xffe46a : 0xff3b4e) }], prMatKumas);
+    R.gov.add(sm); K.parcalar.push(sm); K.seritler.push(sm);
+    y = prYapi(); prTabanAyarla(y, 0, 0.245, -0.02, -0.12, 0, 0.12, 0.2);
+    prKat(y, prSilGeo, 0xffc82c, 0, 0, 0, 1, 0.42, 1, 0, 0, 0, 0.3);
+    for (let k = 0; k < 6; k++) {
+      const a = k / 6 * Math.PI * 2;
+      prKat(y, prKoni, 0xffd23a, Math.sin(a) * 0.86, 0.4, Math.cos(a) * 0.86, 0.22, 0.48, 0.22, 0, 0, 0, 0.3);
+      prKat(y, prKureK, 0xfff2a8, Math.sin(a) * 0.86, 0.92, Math.cos(a) * 0.86, 0.1, 0.1, 0.1, 0, 0, 0, 0);
+      prKat(y, prKureK, [0xff4d6d, 0x5ad1ff, 0x7be36a][k % 3], Math.sin(a) * 1.0, 0.2, Math.cos(a) * 1.0, 0.13, 0.13, 0.07, 0, a, 0, 0.1);
+    }
+    ekle(B.bas, y, prMatB);
+  }
+  prKiyafet = K;
+}
+// bölüm değişince ortamı oku (olay bilgisi ya da BOLUMLER[idx]); kıyafet değiştiyse yeniden kur
+function prOrtamOku(e) {
+  let b = null, idx = e && typeof e.idx === 'number' ? e.idx : -1;
+  if (idx >= 0 && typeof BOLUMLER !== 'undefined') b = BOLUMLER[idx] || null;
+  const al = (ad) => (e && e[ad] !== undefined ? e[ad] : b ? b[ad] : undefined);
+  const kiy = al('kiyafet'), hv = al('hava'), zt = al('zeminTur'), gc = al('gece');
+  prOrtam.idx = idx;
+  prOrtam.kiyafet = typeof kiy === 'string' ? kiy : '';
+  prOrtam.hava = typeof hv === 'string' ? hv : '';
+  prOrtam.zemin = typeof zt === 'string' ? zt : '';
+  prOrtam.gece = !!gc;
+  let ad = ['atki', 'yagmurluk', 'gunes', 'uzay', 'cicektaci', 'parti', 'pelerin'].indexOf(prOrtam.kiyafet) >= 0 ? prOrtam.kiyafet : '';
+  if (ad === 'gunes' && prOrtam.zemin === 'kum' && prOrtam.hava !== 'kum') ad = 'gunes_k';   // kumsal: hasır şapka yerine alında güneş gözlüğü
+  if ((prKiyafet ? prKiyafet.ad : '') !== ad) { if (ad) prAksesuarKur(ad); else prAksesuarSok(); }
+}
+let prOrtamSayac = 0;
+function prOrtamYokla(dt) {   // olay kaçarsa yedek: ara sıra şimdiki bölümü sor
+  prOrtamSayac -= dt; if (prOrtamSayac > 0) return; prOrtamSayac = 1.2;
+  try {
+    const U = typeof window !== 'undefined' ? window.UCUS : null;
+    if (U && U.bolumBilgi) { const bb = U.bolumBilgi(); if (bb && typeof bb.idx === 'number' && bb.idx !== prOrtam.idx) prOrtamOku({ idx: bb.idx }); }
+  } catch (err) { /* sessiz */ }
+}
+
+// karda ağızdan çıkan minik buhar pufu (yalnız karlı bölümlerde görünür; görünmezken çizilmez)
+function prBuharKur(ust, x, y0, z0) {
+  const yb = prYapi();
+  prKat(yb, prKureK, 0xffffff, 0, 0, 0, 0.06, 0.05, 0.05, 0, 0, 0, 0); prKat(yb, prKureK, 0xffffff, 0.05, 0.035, 0.02, 0.045, 0.04, 0.04, 0, 0, 0, 0); prKat(yb, prKureK, 0xffffff, -0.04, 0.03, 0.03, 0.04, 0.035, 0.035, 0, 0, 0, 0);
+  const mat = new prT.MeshBasicMaterial({ color: 0xf4f8ff, transparent: true, opacity: 0, depthWrite: false });
+  const m = prBitir(yb, mat); m.castShadow = m.receiveShadow = false; m.visible = false; m.renderOrder = 2;
+  m.userData.taban = [x, y0, z0]; ust.add(m); return m;
+}
+function prBuharGuncelle(m, t, per, ofs, ileri) {
+  const kar = prOrtam.hava === 'kar' || prOrtam.hava === 'karhafif' || prOrtam.zemin === 'kar' || prOrtam.zemin === 'buz';
+  const q = ((t + ofs) % per) / 0.95;
+  if (!kar || q >= 1) { m.visible = false; return; }
+  m.visible = true; const tb = m.userData.taban, s = 0.4 + q * 1.3;
+  m.position.set(tb[0], tb[1] + q * 0.1, tb[2] + q * ileri); m.scale.setScalar(s); m.material.opacity = 0.5 * Math.sin(Math.min(1, q * 1.4) * Math.PI * 0.5) * (1 - q);
+}
+
+// gecede karakterin arkasında çok hafif sıcak parıltı (kodla çizilen yumuşak daire; gündüz görünmez, çizilmez)
+let prHaleDoku = null;
+function prHaleKur(ust, x, y0, z0, olc) {
+  if (!prHaleDoku && typeof document !== 'undefined') {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g = cv.getContext('2d');
+    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,240,222,1)'); gr.addColorStop(0.45, 'rgba(255,226,206,0.45)'); gr.addColorStop(1, 'rgba(255,214,200,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64); prHaleDoku = new prT.CanvasTexture(cv);
+  }
+  const sp = new prT.Sprite(new prT.SpriteMaterial({ map: prHaleDoku, transparent: true, opacity: 0, depthWrite: false }));
+  sp.position.set(x, y0, z0); sp.scale.set(olc, olc, 1); sp.visible = false; sp.renderOrder = -1; ust.add(sp); return sp;
+}
+function prHaleGuncelle(sp, t, guc) {
+  const a = prKaranlik > 0 ? prKaranlik * guc : 0;
+  sp.visible = a > 0.02; if (sp.visible) sp.material.opacity = a * (0.92 + Math.sin(t * 1.7) * 0.08);
+}
 
 function pirilKur() {
   if (prPiril) return;
   prPiril = prPirilKur(); prBilbo = prBilboKur();
+  prPiril.buhar = prBuharKur(prPiril.bas, 0, -0.27, 0.56); prBilbo.buhar = prBuharKur(prBilbo.bas, 0.01, -0.14, 0.5);
+  prPiril.hale = prHaleKur(prPiril.kok, 0, 0.12, -0.45, 2.3); prBilbo.hale = prHaleKur(prBilbo.kok, 0, 0.75, -0.7, 2.6);
   if (typeof OLAY !== 'undefined') {
     const R = prPiril;
     OLAY.on('kanat', () => { R.zaman.kanat = 0; prMatZar.emissiveIntensity = 0.85; R.v.sacX -= 6.5; R.v.kuyX += 4.0; R.v.ez -= 2.2; R.v.ofY -= 0.45; R.v.kanatEsne += 1.4; });
@@ -412,8 +697,24 @@ function pirilKur() {
       R.son = prBilbo.son = !!(e && n && e.bolumIdx === n - 1);
     });
     OLAY.on('ruzgar', () => { R.zaman.ruzgar = 0; R.v.ez += 3.5; R.v.gozB += 3.0; R.v.sacS += 1.4; R.v.kanatAc += 1.8; });
+    OLAY.on('yeniden', () => { prBilbo.kos = null; prBilbo.kosX = null; prBilbo.semX = null; });
+    OLAY.on('bolum', () => { prBilbo.kos = null; prBilbo.kosX = null; prBilbo.semX = null; });
     OLAY.on('yeniden', () => { R.zaman.kavus = 9; R.zaman.halka = 9; R.zaman.ruzgar = 9; prBilbo.zaman.kavus = 9; prBilbo.zaman.iska = 9; prBilbo.zaman.heyecan = 9; prBilbo.zaman.basla = 9; R.zaman.durum = 0; });
-    OLAY.on('bolum', () => { R.zaman.halka = 9; R.zaman.ruzgar = 9; });
+    OLAY.on('bolum', (e) => { R.zaman.halka = 9; R.zaman.ruzgar = 9; R.zaman.simsek = 9; try { prOrtamOku(e); } catch (err) { prAksesuarSok(); } });
+    OLAY.on('simsek', () => { if (R.zaman.simsek > 2) { R.zaman.simsek = 0; prBilbo.zaman.simsek = 0; } });   // şimşek: bir an şaşırır, Bilbo'ya bakar, güler (korkmaz)
+    OLAY.on('kanatSira', () => { R.zaman.kanatSira = 0; R.v.kanatAc += 3; R.v.gozB += 3; R.v.sacS += 1.2; });   // erken dokunuş: kanatlarını hazırlar
+    OLAY.on('havaDindi', () => { R.zaman.dindi = 0; prBilbo.zaman.dindi = 0; });   // yağmur dinince güneşe bakıp sevinir
+    OLAY.on('bilboKos', (e) => {   // Bilbo, Pırıl'ın indiği yere koşar
+      const B = prBilbo; if (!e) return;
+      const x0 = typeof e.x0 === 'number' ? e.x0 : (B.kosX !== null ? B.kosX : (typeof D !== 'undefined' ? D.hedef.x : 0));
+      const x1 = typeof e.x1 === 'number' ? e.x1 : P.x;
+      const d = Math.abs(x1 - x0);
+      const cur = B.kosX !== null ? B.kosX : (typeof D !== 'undefined' ? D.hedef.x : x0), son = x1 - (x0 - cur);   // Bilbo'nun şu anki yerinden başlar (sıçramaz)
+      const sure = typeof e.sure === 'number' && e.sure > 0.1 ? e.sure : clampPr(0.55 + d * 0.1, 0.8, 1.3);   // oyunun süresi (varınca 'kavus' gelir)
+      B.kos = { x0, x1, bas: cur, son, t: 0, sure, yon: son >= cur ? 1 : -1, engel: typeof e.engel === 'number' ? e.engel - (x0 - cur) : null }; B.kosX = cur; B.faz = 0;
+      if (B.semX === null || B.semX === undefined) B.semX = cur;   // yaprak şemsiye eski yerinde kalır
+      B.zaman.kavus = Math.min(B.zaman.kavus, 0); B.v.kulX -= 8; B.v.zip += 4;
+    });
     OLAY.on('kanatBos', () => { if (R.zaman.kanatBos > 0.3) { R.zaman.kanatBos = 0; R.v.kanatCirp += 3; R.v.ez += 1.2; } });   // hak bitince: boşta pırpır + omuz silkip kıkırdama
   }
 }
@@ -446,7 +747,7 @@ function pirilGuncelle(dt, t) {
     if (d === 'bekle') { R.dalga = !(onceki === 'don' || onceki === 'cek'); R.bekleOfs = onceki === 'don' ? 5.8 : onceki === 'cek' ? 9.4 : 0; }   // dönüşte el sallamak yerine "beni çek" daveti
     if (d === 'bekle' && onceki === 'don') { v.ez -= 5; v.ofY -= 1.5; }        // salıncağa "pof" diye konar
     if (d === 'bekle' && onceki === 'cek' && z.salla > 0.2) { v.egim += 3 * R.yon1; v.ez += 2; }   // bırakılınca yaylanıp ortaya döner
-    if (d === 'yuvar') { v.ez -= 5; }
+    if (d === 'yuvar') { v.ez -= 5; const fk = s.egim + (P.aci || 0); R.donFark = Math.atan2(Math.sin(fk), Math.cos(fk)); }   // yere değince açı birden sıçramasın
     if (d === 'cek') { v.ez -= 2; v.gozB += 3; v.sacX += 4.5; v.sacS += 1.6; }
   }
   const zd = z.durum, hiz = Math.hypot(P.vx || 0, P.vy || 0);
@@ -456,6 +757,7 @@ function pirilGuncelle(dt, t) {
     k0x = 0.15, k0z = -0.25, k1x = 0.15, k1z = 0.25, basX = 0, basY = 0, basZ = 0, kuyX = 0, kuyY = 0, kuyZ = Math.sin(t * 2.6) * 0.12, sacX = 0, sacZ = 0, sacS = 1, ayakX = 0, yanak = 0,
     kasY = 0.01, kasR = -0.1, gulus = 1, ofX = 0, ofY = 0, hop = 0, takla = 0, dondur = null, kirpZorla = false, agizS = 1, sert = 1;
   const dx = P.x - R.oncekiX; R.oncekiX = P.x;
+  R.ekDon = 0; prOrtamYokla(dt);
   if (d === 'bekle') {
     // yaprak salıncağında oturur: nefes, ağırlık kaydırma, minik baş eğmeleri, kanat kıpırtıları, bakış gezinmesi, sabırsızlık, kanat silkeleme, "beni çek" daveti
     R.yon1 = 1; yaw = 0.45; ofY = 0.42;
@@ -528,6 +830,41 @@ function pirilGuncelle(dt, t) {
     }
     if (z.basla < 0.8) { const q = z.basla / 0.8; hop = Math.sin(q * Math.PI) * 0.42; ez = 0.94 + Math.sin(q * Math.PI) * 0.14; kanatAc = 0.85; kanatCirp = Math.sin(q * Math.PI * 3) * 0.42; k0z = -2.6; k1z = 2.6; k0x = k1x = -0.3; gulus = 2; yaw = 0.2; kuyY = Math.sin(t * 12) * 0.45; }
     if (z.salla < 1.0) { gulus = 3; gozB = 1.15; basZ += Math.sin(z.salla * 14) * 0.15 * (1 - z.salla); }
+    // ortama göre bekleme tepkileri (kısa ve tatlı)
+    const oh = prOrtam.hava, oz = prOrtam.zemin;
+    if (!baslik && z.basla > 0.8 && z.salla > 1) {
+      if (oh === 'yagmur' || oh === 'firtina') {   // ıslak köpek gibi silkelenir; damlalar saçılır
+        const q = (zd + 3.2) % 9.5;
+        if (q < 0.8) {
+          const sw = prPenc(q, 0, 0.8), w = Math.sin(q * 40);
+          egim = w * 0.13 * sw; basY = -w * 0.4 * sw; basZ = Math.sin(q * 40 - 0.8) * 0.2 * sw; sacZ = Math.sin(q * 40 - 1.4) * 0.25 * sw; sacX -= 0.2 * sw;
+          kuyY = Math.sin(q * 40 - 2.2) * 0.7 * sw; kanatAc = 0.6; kanatCirp = Math.sin(q * 40 - 1) * 0.5 * sw; ofX = w * 0.025 * sw; hop = 0;
+          gozB = 1 - 0.9 * sw; kirpZorla = sw > 0.3; gulus = 2; yaw = 0.35;
+          if (!R.silk && q > 0.15) { R.silk = true; if (typeof OLAY !== 'undefined') OLAY.emit('silkin', { x: P.x, y: P.y + 0.3, kim: 'piril' }); }
+        } else R.silk = false;
+      } else if (oh === 'kar' || oh === 'karhafif') {   // dilini uzatıp kar tanesi yakalar, sonra üşüyüp kıkırdar
+        const q = (zd + 6) % 11;
+        if (q < 1.3) {
+          const w = prPenc(q, 0, 1.3), yut = prPenc(q, 0.95, 1.2);
+          basX = -0.55 * w; basZ = 0.08 * w; yaw = 0.3; gulus = 2; agizS = 1 + 0.25 * w - yut * 0.4; gozB = 1 - 0.75 * w; kirpZorla = w > 0.4;
+          hop = Math.max(hop, prPenc(q, 0.25, 0.75) * 0.08); ez = 1 + 0.05 * w - yut * 0.06; kanatAc = 0.4; k0z = -0.6; k1z = 0.6; yanak = 0.4 * w;
+        } else if (q < 2.3) {
+          const w = prPenc(q, 1.3, 2.3), tit = Math.sin(t * 55);
+          ofX = tit * 0.016 * w; ez = 0.96 + Math.abs(tit) * 0.03 * w; k0x = -1.1 * w; k1x = -1.1 * w; k0z = 0.55 * w - 0.35 * (1 - w); k1z = -0.55 * w + 0.35 * (1 - w);
+          gulus = 2; gozB = 1 - 0.8 * w; kirpZorla = w > 0.4; yanak = 0.7 * w; basZ = Math.sin(t * 24) * 0.06 * w; sacZ += tit * 0.08 * w; kuyY = tit * 0.3 * w + kuyY * (1 - w);
+        }
+      } else if (oz === 'ay') {   // ayda hafifçe süzülür gibi yaylanır
+        const q = Math.sin(zd * 1.5);
+        hop += (q * 0.5 + 0.5) * 0.16; ez = 1 + q * 0.03; kanatAc = 0.45 + (q * 0.5 + 0.5) * 0.2; kanatCirp = Math.sin(zd * 1.5 + 1) * 0.12;
+        ayakX = 0.25 + q * 0.12; kuyY = kuyY * 0.6; k0z -= 0.25 * (q * 0.5 + 0.5); k1z += 0.25 * (q * 0.5 + 0.5);
+      }
+    }
+    if (z.simsek < 1.6) {   // şimşek: bir an şaşırır, Bilbo'ya bakar, sonra kıkırdar (korkmaz)
+      const k = z.simsek;
+      if (k < 0.4) { const w = prPenc(k, 0, 0.8); gulus = 3; gozB = 1.38; hop = Math.max(hop, w * 0.12); sacS = 1 + 0.2 * w; kasY = 0.05; kanatAc = 0.6 + 0.2 * w; }
+      else if (k < 0.95) { yaw = 0.9; basY = 0.45; basX = -0.08; gulus = 3; gozB = 1.2; }
+      else { const w = prPenc(k, 0.95, 1.6), kik = Math.sin(k * 26); yaw = 0.5; basY = 0.1; gulus = 2; gozB = 1 - 0.8 * w; kirpZorla = w > 0.4; ez = 0.97 + Math.abs(kik) * 0.04 * w; agizS = 1 + kik * 0.15 * w; yanak = 0.5 * w; k0z = -0.5 + kik * 0.2 * w; k1z = 0.5 - kik * 0.2 * w; }
+    }
   } else if (d === 'cek') {
     const g = typeof CEK !== 'undefined' ? CEK.guc || 0 : 0;
     const gK = clampPr(g, 0, 1), gY = prYum(gK);
@@ -769,6 +1106,13 @@ function pirilGuncelle(dt, t) {
           gozB = 1.06 - 0.9 * sw; kirpZorla = sw > 0.3; ez = 0.96 + Math.abs(q) * 0.05 * sw;
         }
       }
+      if (prOrtam.zemin === 'buz' && yt < 1.25) {   // buzda kayıp komik bir fırıl döner, kollar denge için açık
+        const q = yt / 1.25, w = Math.sin(q * Math.PI);
+        R.ekDon = R.yon1 * prYum(q) * Math.PI * 2;
+        k0z = -1.7 + Math.sin(yt * 14) * 0.3 * w; k1z = 1.7 - Math.sin(yt * 14) * 0.3 * w; k0x = -0.4; k1x = -0.4;
+        gulus = q < 0.5 ? 3 : 2; gozB = q < 0.5 ? 1.3 : 1.1; kirpZorla = false; egim = Math.sin(yt * 9) * 0.12 * w; hop = w * 0.05; kanatAc = 0.7; kanatCirp = Math.sin(yt * 20) * 0.3 * w;
+        kuyY = Math.sin(yt * 12) * 0.5; ayakX = 0.3 * w;
+      }
     }
   } else if (d === 'don') {
     // toz silkeler, sonra neşeyle zıplaya zıplaya salıncağa döner
@@ -787,7 +1131,7 @@ function pirilGuncelle(dt, t) {
       sacX = -0.35; gulus = 2; basX = -h * 0.1; basZ = Math.sin(t * f) * 0.12;
     }
   } else if (d === 'kavus') {
-    const k = z.kavus, bx = typeof D !== 'undefined' ? D.hedef.x : 46;
+    const k = z.kavus, bx = prBilbo.kosX !== null ? prBilbo.kosX : typeof D !== 'undefined' ? D.hedef.x : 46;
     R.yon1 = bx >= P.x ? 1 : -1;
     yaw = 0.6 * R.yon1; gulus = 2; gozB = 1.08; kanatAc = 0.9;
     kuyY = Math.sin(t * 11) * 0.55; kuyZ = Math.cos(t * 11) * 0.24; kuyX = 0.25;
@@ -844,9 +1188,35 @@ function pirilGuncelle(dt, t) {
       }
     }
   }
+  const BK = prBilbo.kos;
+  if (BK && BK.t < BK.sure && (d === 'kavus' || d === 'bekle' || (d === 'yuvar' && hiz < 0.6))) {   // Bilbo koşarak geliyor: ayağa kalkıp kollarını açar, zıp zıp bekler
+    z.kavus = Math.min(z.kavus, 0);
+    const bxk = prBilbo.kosX + 0.5; R.yon1 = bxk >= P.x ? 1 : -1;
+    const ac = prYum(BK.t / 0.3), j = Math.abs(Math.sin(t * 8.5));
+    dondur = null; yaw = 0.5 * R.yon1; egim = -R.yon1 * 0.05; ofX = 0; ofY = 0; takla = 0;
+    k0x = -0.7; k1x = -0.7; k0z = -0.4 - 1.9 * ac; k1z = 0.4 + 1.9 * ac; hop = j * 0.07 * ac; ez = 0.97 + j * 0.05;
+    gulus = 2; gozB = 1.26; yanak = 0.55; agizS = 1.12; kanatAc = 0.95; kanatCirp = Math.sin(t * 14) * 0.3; kirpZorla = false;
+    kuyY = Math.sin(t * 12) * 0.6; kuyZ = Math.cos(t * 12) * 0.25; kuyX = 0.3; basY = 0.25 * R.yon1; basZ = Math.sin(t * 5) * 0.08; basX = -0.05;
+    sacX = -0.1 + Math.sin(t * 8.5) * 0.08; sacS = 1.12; ayakX = 0;
+  }
+  if (z.kanatSira < 0.35 && d === 'ucus') {   // erken dokunuş sıraya alındı: kanatlarını hazırlar gibi açıp toplar, gözleri parlar
+    const w = Math.sin(z.kanatSira / 0.35 * Math.PI);
+    kanatAc = Math.max(kanatAc, 1.2 + 0.12 * w); kanatCirp = kanatCirp * (1 - w) + 0.45 * w; gozB = Math.max(gozB, 1.25 + 0.1 * w); gulus = 2; sacS = Math.max(sacS, 1 + 0.15 * w); k0z -= 0.4 * w; k1z += 0.4 * w;
+  }
+  if (z.dindi < 1.8 && (d === 'kavus' || d === 'bekle')) {   // yağmur dindi: başını güneşe kaldırıp gözleri mutlu kısık gülümser
+    const w = prPenc(z.dindi, 0, 1.8);
+    basX -= 0.42 * w; gulus = 2; gozB = gozB * (1 - w) + 0.25 * w; kirpZorla = w > 0.5; yanak = Math.max(yanak, 0.5 * w); sacS = Math.max(sacS, 1 + 0.12 * w);
+  }
   if (d === 'kavus' && z.kavus > 3.25 && (R.coskun || R.son)) {   // 5 yıldız / son bölüm: Bilbo dönerken Pırıl havada takla atar
     const c = (z.kavus - 3.25) % 5;
     hop *= R.son ? 1.7 : 1.4;
+    if (R.son && c < 2.5) {   // BÜYÜK FİNAL: Bilbo ile birlikte zıplayıp fırıl fırıl dönme dansı
+      const d1 = prYum(c / 0.9), d2 = prYum((c - 1.25) / 0.9), h1 = prPenc(c, 0, 0.9), h2 = prPenc(c, 1.25, 2.15);
+      R.ekDon = R.yon1 * (d1 + d2) * Math.PI * 2;
+      hop = (h1 + h2) * 0.95 + prPenc(c, 0.95, 1.2) * 0.04; olcek = 1.25;   // yeni geniş final kamerasında da seçilsin ez = 1 + (h1 + h2) * 0.1 - prPenc(c, 0.9, 1.25) * 0.12;
+      k0z = -2.55; k1z = 2.55; k0x = k1x = -0.25; gulus = 2; gozB = 1.2; yanak = 0.6; kanatAc = 1.2; kanatCirp = Math.sin(t * 20) * 0.4;
+      ofX = R.yon1 * 0.2; basZ = Math.sin(c * 5) * 0.1; kuyY = Math.sin(t * 16) * 0.7; sacX = -0.3 - (h1 + h2) * 0.3;
+    }
     if (c > 2.55 && c < 3.35) {
       const q = (c - 2.55) / 0.8;
       takla = -R.yon1 * prYum(q) * Math.PI * 2; hop += Math.sin(q * Math.PI) * (R.son ? 0.75 : 0.5);
@@ -874,7 +1244,8 @@ function pirilGuncelle(dt, t) {
   }
   // yaylarla yumuşat
   if (dondur === null) prAciYayla(R, 'yaw', yaw, dt, sert === 3 ? 400 : 110 * sert, sert === 3 ? 0.9 : 0.62);
-  if (dondur !== null) { s.egim = 0; v.egim = 0; } else prYayla(R, 'egim', egim, dt, d === 'ucus' ? 150 : 90, 0.45);
+  R.donFark = (R.donFark || 0) * Math.exp(-dt * 12);
+  if (dondur !== null) { s.egim = Math.atan2(Math.sin(-dondur + R.donFark), Math.cos(-dondur + R.donFark)); v.egim = 0; } else prYayla(R, 'egim', egim, dt, d === 'ucus' ? 150 : 90, 0.45);   // yuvarlanma bitince bulunduğu açıdan yaylanarak doğrulur (birden dikilmez)
   prYayla(R, 'ez', ez, dt, 260, 0.3);
   prYayla(R, 'gozB', gozB, dt, 320, 0.5);
   prYayla(R, 'kanatAc', kanatAc, dt, 220, 0.42);
@@ -895,8 +1266,8 @@ function pirilGuncelle(dt, t) {
   // yerleştir
   R.yon.scale.setScalar(0.58 * s.olcek);
   R.kok.position.set(P.x + s.ofX, P.y + s.ofY + hop + (takla ? 0.35 * Math.sin(Math.abs(takla) / 2) : 0), 0);
-  R.kok.rotation.z = dondur !== null ? -dondur : s.egim + takla;
-  R.yon.rotation.y = s.yaw;
+  R.kok.rotation.z = dondur !== null ? -dondur + R.donFark : s.egim + takla;
+  R.yon.rotation.y = s.yaw + R.ekDon;
   const eY = clampPr(s.ez, 0.55, 1.5), eX = 1 / Math.sqrt(eY);
   R.ez.scale.set(eX, eY, eX);
   // bakış: gözbebekleri gittiği yöne / Bilbo'ya / Feza'ya kayar (baştan önce davranır)
@@ -942,13 +1313,42 @@ function pirilGuncelle(dt, t) {
   const gl = gulus;
   R.agizGul.visible = gl === 0 || gl === 1; R.agizO.visible = gl === 3; R.agizKoca.visible = gl === 2;
   R.agizGul.scale.set(gl === 0 ? 0.75 : 1, gl === 0 ? 0.6 : 1, 1);   // tam çekişte dudaklar sıkılı (yanaklar şişkin)
+  if (prKiyafet && prKiyafet.seritler.length) {   // atkı uçları / pelerin: hıza göre geriye savrulur, dalgalanır
+    let hA = 0.12 + Math.sin(t * 1.1) * 0.05, dal = 0.07, f = 2.4;
+    if (d === 'ucus') { const r = clampPr(hiz / 15, 0, 1); hA = 0.5 + r * 0.95 + clampPr(-(P.vy || 0) / 14, -0.2, 0.25); dal = 0.12 + r * 0.22; f = 8 + r * 9; }
+    else if (d === 'cek') { const g = typeof CEK !== 'undefined' ? CEK.guc || 0 : 0; hA = 0.18 + g * 0.35; dal = 0.06 + g * 0.06; f = 4 + g * 10; }
+    else if (d === 'yuvar' || d === 'don') { hA = 0.3 + clampPr(hiz / 10, 0, 1) * 0.6 + hop * 1.5; dal = 0.14; f = 7; }
+    else if (d === 'kavus') { hA = 0.22 + hop * 2.2 + Math.abs(s.ofX) * 0.2 + (R.ekDon ? 0.6 : 0); dal = 0.12; f = 6; }
+    else if (hop > 0.02) { hA += hop * 2; dal = 0.1; }
+    hA -= R.ivY * 0.004;
+    R.seritV += ((hA - R.serit) * 60 - R.seritV * 2 * Math.sqrt(60) * 0.45) * dt; R.serit += R.seritV * dt;   // yumuşak, hafif taşan takip
+    const sa = clampPr(R.serit, -0.2, 1.65);
+    // dünya yönlerini gövdenin yerel eksenine çevir: aşağı = yerçekimi, geri = uçuşun tersi (biraz da ekrana doğru, yandan görünsün)
+    R.gov.getWorldQuaternion(prQ2).invert();
+    prVd.set(0, -1, 0).applyQuaternion(prQ2);
+    const kU = prYum((sa - 0.25) / 0.7);   // durunca sırta sarkar (yerel geri), hızlanınca uçuşun tersine, yana doğru savrulur
+    prVb.set(-R.yon1, 0, -0.15).applyQuaternion(prQ2).multiplyScalar(kU); prVd2.set(-R.yon1 * 0.75, 0, -0.65).applyQuaternion(prQ2); prVb.addScaledVector(prVd2, 1 - kU);   // durunca da yana-geriye sarkar: kameradan görünsün
+    prVb.addScaledVector(prVd, -prVb.dot(prVd)).normalize();
+    prVw.set(1, 0, 0); prVw.addScaledVector(prVd, -prVw.dot(prVd)); prVw.addScaledVector(prVb, -prVw.dot(prVb)).normalize();
+    prVw.addScaledVector(prVd, -0.9 * kU).normalize();   // savrulunca yüzü biraz kameraya döner (yandan ince çizgi gibi kalmasın)
+    for (let i = 0; i < prKiyafet.seritler.length; i++) prSeritGuncelle(prKiyafet.seritler[i], sa, dal, f, t, prVd, prVb, prVw);
+  }
+  prBuharGuncelle(R.buhar, t, 4.1, 0, 0.18); prHaleGuncelle(R.hale, t, d === 'bekle' || d === 'cek' ? 0.46 : 0.34); { const hs = d === 'bekle' || d === 'cek' ? 3.0 : 2.3; R.hale.scale.x += (hs - R.hale.scale.x) * prUs(dt, 4); R.hale.scale.y = R.hale.scale.x; } prHaleGuncelle(prBilbo.hale, t, 0.22);
   prBilboGuncelle(dt, t);
+  prBuharGuncelle(prBilbo.buhar, t, 4.9, 2.2, 0.16);
 }
 
 function prBilboGuncelle(dt, t) {
   const B = prBilbo, s = B.s, z = B.zaman;
   for (const k in z) z[k] += dt;
-  const hx = typeof D !== 'undefined' ? D.hedef.x : 46, hy = typeof D !== 'undefined' ? D.hedef.y : 0;
+  B.ekDon = 0;
+  const hx0 = typeof D !== 'undefined' ? D.hedef.x : 46, hy = typeof D !== 'undefined' ? D.hedef.y : 0;
+  if (B.kos) {
+    const K = B.kos; K.t += dt; const p = clampPr(K.t / K.sure, 0, 1), e = p * p * (3 - 2 * p) * 0.6 + p * 0.4;
+    B.kosX = K.bas + (K.son - K.bas) * e;
+    if (p < 1) { z.kavus = Math.min(z.kavus, 0); }
+  }
+  const hx = B.kosX !== null ? B.kosX : hx0;
   const ddx = P.x - hx, ddy = P.y - hy, mes = Math.hypot(ddx, ddy), dP = P.durum;
   const baslik = typeof window !== 'undefined' && window.ARAYUZ && window.ARAYUZ.baslikAcik;
   let yaw = ddx > 0.3 ? 0.75 : -0.75, basX = clampPr(-Math.atan2(ddy - 1, Math.abs(ddx) + 2) * 0.6, -0.55, 0.35), basY = 0.12, basZ = 0,
@@ -1099,12 +1499,50 @@ function prBilboGuncelle(dt, t) {
         kulX = Math.min(kulX, -0.58 * sw); kulZ += Math.sin(t * 11) * 0.09 * sw; kulS = Math.max(kulS, 1 + 0.16 * sw);
         basZ += 0.16 * sw; kuyHiz = Math.max(kuyHiz, 18); kuyGen = Math.max(kuyGen, 0.72); gozB = Math.max(gozB, 1 + 0.1 * sw);
       }
+      // ortama göre: karda patisiyle kar eşeler, kumsalda kuyruğu durmaz, yağmurda silkinir, ayda hafif yaylanır
+      const oh = prOrtam.hava, oz = prOrtam.zemin;
+      if (oz === 'kar' || oz === 'buz') {
+        const q = (t + 1) % 10;
+        if (q < 1.8) { const w = prPenc(q, 0, 1.8); otur = 0; egil = 0.2 * w; basX = 0.4 * w; basY = 0; pati = w * (0.35 + Math.abs(Math.sin(t * 15)) * 0.55); kuyHiz = 22; kuyGen = 0.7; kulX = 0.15 * w; kulZ = Math.sin(t * 15) * 0.06 * w; }
+      } else if (oz === 'kum') { kuyHiz = Math.max(kuyHiz, 20); kuyGen = Math.max(kuyGen, 0.85); }
+      else if (oz === 'ay') { zip = Math.max(zip, (Math.sin(t * 1.4 + 1) * 0.5 + 0.5) * 0.12); kulX = Math.min(kulX, -0.3); }
+      if (oh === 'yagmur' || oh === 'firtina') {
+        const q = (t + 7.5) % 11;
+        if (q < 0.9) {
+          const sw = prPenc(q, 0, 0.9); B.ekDon = Math.sin(q * 42) * 0.38 * sw; kulZ = Math.sin(q * 42 - 1) * 0.45 * sw; kulX = -0.3 * sw; gozKapa = sw > 0.35; otur = 0; kuyGen = 0.9; kuyHiz = 30;
+          if (!B.silk && q > 0.15) { B.silk = true; if (typeof OLAY !== 'undefined') OLAY.emit('silkin', { x: hx + 0.5, y: hy + 0.8, kim: 'bilbo' }); }
+        } else B.silk = false;
+      }
     }
+  }
+  if (z.simsek < 1.6 && dP !== 'kavus') {   // şimşek: kulaklar dikilir, Pırıl'a bakar, sonra kuyruk sallar
+    const k = z.simsek;
+    if (k < 0.5) { kulX = -0.9; kulS = 1.25; gozB = 1.18; zip = Math.max(zip, prPenc(k, 0, 0.5) * 0.12); otur = 0; }
+    else { yaw = -0.75; basY = -0.3; kuyHiz = 26; kuyGen = 0.9; kulX = -0.3; dilYala = Math.max(dilYala, prPenc(k, 0.9, 1.5) * 0.3); }
+  }
+  if (dP === 'kavus' && B.son && z.kavus > 3.25 && (z.kavus - 3.25) % 5 < 2.5) {   // BÜYÜK FİNAL: Pırıl'la aynı anda zıplayıp döner
+    const c = (z.kavus - 3.25) % 5, h1 = prPenc(c, 0, 0.9), h2 = prPenc(c, 1.25, 2.15);
+    B.ekDon = -(prYum(c / 0.9) + prYum((c - 1.25) / 0.9)) * Math.PI * 2;
+    zip = (h1 + h2) * 0.62; pati = 0.9; kulX = -0.9 * (h1 + h2) - 0.2; kulS = 1.25; gozB = 1.15; yaw = -0.35; egil = -0.1 * (h1 + h2); ofX = -0.25;
   }
   if (dP === 'kavus' && z.kavus > 3.25 && (B.coskun || B.son)) {   // 5 yıldız / son bölüm: ekstra coşku (daha yüksek zıplama, fırıl fırıl dönüş)
     const c = (z.kavus - 3.25) % 5, gK = B.son ? 1.8 : 1.45;
     zip *= gK; pati = Math.max(pati, 0.5 + Math.abs(Math.sin(t * 9)) * 0.3); kuyHiz = Math.max(kuyHiz, 32); kuyGen = Math.max(kuyGen, 0.95); heyecanGuc = 1;
     if (c > 2.55 && c < 3.35) { const q = (c - 2.55) / 0.8, w = Math.sin(q * Math.PI); yaw = -0.35 + Math.sin(q * Math.PI * 4) * 0.25 * w; zip = Math.max(zip, w * 0.6); pati = 1; kulX = -1 * w; kulS = 1.25; egil = -0.15 * w; }   // yüzü hep bize dönük koca sevinç zıplaması
+  }
+  if (z.dindi < 1.8) { const w = prPenc(z.dindi, 0, 1.8); basX -= 0.4 * w; kulX = Math.min(kulX, -0.6 * w); kuyHiz = Math.max(kuyHiz, 26); kuyGen = Math.max(kuyGen, 0.85); gozKapa = gozKapa || w > 0.6; }   // yağmur dindi: güneşe bakar
+  if (dP === 'kavus' && P.x > hx + 0.7) { ofX = -ofX; yaw = -yaw; basY = -basY; basZ = -basZ; }   // Pırıl sağında kaldıysa kavuşma hareketleri aynalanır
+  // Pırıl'ın yanına koşu (bilboKos): zıp zıp dörtnal, kulaklar savrulur, dil dışarıda
+  if (B.kos && B.kos.t < B.kos.sure + 0.25) {
+    const K = B.kos, p = clampPr(K.t / K.sure, 0, 1), w = 1 - prYum((K.t - K.sure) / 0.25);
+    B.faz += dt * (12 + Math.min(6, Math.abs(K.x1 - K.x0) / K.sure));
+    const ph = B.faz, g2 = Math.sin(ph * 2);
+    if (w > 0.5) {
+      yaw = K.yon * 1.3; zip = Math.abs(Math.sin(ph)) * 0.3 * w; egil = g2 * 0.16 * w - 0.04; otur = 0; ofX = 0;
+      pati = 0.55 + g2 * 0.45; kulX = -0.85 + Math.sin(ph * 2 - 1.2) * 0.4; kulZ = Math.sin(ph) * 0.16; kulS = 1.2;
+      if (K.engel !== null) { const ze = Math.max(0, 1 - Math.abs(hx + 0.5 - K.engel) / 0.9); zip += Math.sin(ze * Math.PI * 0.5) * 0.55; egil -= ze * 0.15; }   // çalının üstünden hop
+      basX = -0.12 + Math.sin(ph * 2 + 0.6) * 0.1; basY = 0; basZ = Math.sin(ph) * 0.06; kuyHiz = 32; kuyGen = 0.95; heyecanGuc = 1; dilYala = Math.max(dilYala, 0.3); gozB = 1.14; gozKapa = false;
+    }
   }
   // dil: soluma (heyecan) + yalama
   const dilH = heyecanGuc + (dP === 'kavus' ? 0.4 : 0);
@@ -1123,7 +1561,8 @@ function prBilboGuncelle(dt, t) {
   B.kuyFaz += dt * kuyHiz;
   const wag = Math.sin(B.kuyFaz);
   B.kok.position.set(hx + 0.5 + s.ofX, hy, -0.3);
-  B.yon.rotation.y = s.yaw + wag * s.kuyGen * 0.08;                         // kuyrukla birlikte kalça sallanır
+  if (prKiyafet && prKiyafet.semsiye) { const g = prKiyafet.semsiye; g.position.x = (B.semX !== null && B.semX !== undefined ? B.semX : hx0) - hx - s.ofX; g.rotation.z = Math.sin(t * 0.9) * 0.025 + (prOrtam.hava === 'firtina' ? Math.sin(t * 2.3) * 0.03 : 0); }
+  B.yon.rotation.y = s.yaw + B.ekDon + wag * s.kuyGen * 0.08;                         // kuyrukla birlikte kalça sallanır
   const ez = 1 + Math.sin(t * 2.4) * 0.02 - Math.max(0, 0.05 - s.zip) * 0.65 + Math.max(0, s.zip - 0.15) * 0.18;
   const ezX = 1 / Math.sqrt(clampPr(ez, 0.75, 1.3));
   B.ez.position.y = Math.max(-0.05, s.zip) - s.otur * 0.08;

@@ -17,7 +17,14 @@
     yildizMik: 3.2, yildizMikG: 4.0, // yıldız mıknatısı: bu yakınlıkta Pırıl'ı yumuşakça çeker
     bilboCekR: 3.6, bilboCekG: 1.3, // Bilbo'ya yakın inişte yumuşak çekim (yarıçap m, güç)
     kanatAra: 0.30,   // iki kanat çırpma arası en kısa süre (hızlı ardışık dokunuş hak harcamaz)
-    bulutVx: 0.5, bulutVy: 0.4, bulutVyEn: 6 // buluttan sekme (yumuşak yastık)
+    bulutVx: 0.5, bulutVy: 0.4, bulutVyEn: 6, // buluttan sekme (yumuşak yastık)
+    // bu bölümdeki önceki uçuş sayısına göre gizli cömertlik (0,1,2,3,4+ uçuş) ve 4. uçuştan sonra ek büyüme
+    // (cocukOzet ile 14 zor bölümde ölçüldü: 5 denemede tam başarı %64 → %72, 8 denemede %91 → %96)
+    // Bilbo koşar: Pırıl Bilbo'nun önünde 7 m / arkasında 5 m içinde durursa Bilbo koşup gelir, kavuşma sayılır (gizli yardımla +2 m)
+    guvenliKamera: true, // uçuş kamerası yakındaki yıldızları gösterge altında bırakmaz
+    inisKanat: false, // deneme: Bilbo'ya 10 m kala alçakta kanat yarı güçte (ölçüldü, bkz. istek dosyası)
+    bilboKos: true, kosOn: 7, kosArka: 5, kosEk: 2, kosBekle: 0.25,
+    denemeYardim: [0, 0.2, 0.5, 0.8, 1], denemeBuyuk: { n: 3, yildizR: 0.7, yildizMik: 1.2, hedefR: 0.9 }
   };
   const R_PIRIL = 0.7;
   const HIZ = clamp(parseFloat(Q.get('hiz')) || 1, 0.1, 8);
@@ -44,7 +51,7 @@
   }
   function kayitOku() {
     const n = bolumListesi().length;
-    const bos = { acik: 1, yildiz: new Array(n).fill(0) };
+    const bos = { acik: 1, yildiz: new Array(n).fill(0), tek: new Array(n).fill(0) };
     try {
       const ham = localStorage.getItem(KAYIT_ANAHTAR);
       if (!ham) return bos;
@@ -53,7 +60,12 @@
       if (Array.isArray(p.yildiz)) {
         for (let i = 0; i < n && i < p.yildiz.length; i++) y[i] = clamp(parseInt(p.yildiz[i], 10) || 0, 0, 5);
       }
-      return { acik: clamp(parseInt(p.acik, 10) || 1, 1, n), yildiz: y };
+      let acik = clamp(parseInt(p.acik, 10) || 1, 1, n);
+      // bölüm sayısı arttıysa (25 → 40): eskiden son bölümü bitirmiş çocuğun yeni bölümü açık olsun
+      for (let i = n - 2; i >= 0; i--) if (y[i] > 0) { acik = Math.max(acik, i + 2); break; }
+      const tk = new Array(n).fill(0); // bölüm başına "tek atışta 5 yıldız" bayrağı
+      if (Array.isArray(p.tek)) for (let i = 0; i < n && i < p.tek.length; i++) tk[i] = p.tek[i] ? 1 : 0;
+      return { acik: clamp(acik, 1, n), yildiz: y, tek: tk };
     } catch (_) { return bos; }
   }
   function kayitYaz() {
@@ -82,7 +94,7 @@
     bolumIdx: 0,
     deneme: 0, iska: 0, yildizAlindi: [false, false, false, false, false], yildizSay: 0,
     ucusT: 0, yerTemas: 0, durumT: 0, kanatVar: true, kanatKalan: 1, kanatBekle: 0, kanatBosBekle: 0, suzT: 0, sim: false, sekSay: 0,
-    sekBekle: 0, caliBekle: 0, ruzgarBekle: 0, halkaAlindi: [], otoKanatT: [],
+    sekBekle: 0, caliBekle: 0, ruzgarBekle: 0, halkaAlindi: [], otoKanatT: [], baloncukAlindi: [], esintiIc: [], bolumDeneme: 0, kanatSira: false, iskaGec: false, gecKanatT: 0,
     donX0: 0, donY0: 0, t: 0, kare: 0, fps: 60, oyunHazir: false, otoT: 0,
     // zaman ölçeği (his)
     zs: 1, durakT: 0, yildizT: 0, yaklas: 0, sonYavas: 1,
@@ -106,8 +118,13 @@
 
   // ---------- yardım düzeyi (görünmez, kademeli) ----------
   function yd() { return clamp((G.iska - 1) / 5, 0, 1); }            // 0 (0–1 ıska) → 1 (6 ıska)
-  function yardimDuzey() { return G.iska >= 6 ? 3 : G.iska >= 4 ? 2 : G.iska >= 2 ? 1 : 0; }
-  function hedefR() { return A.hedefR0 + 0.6 * yd() + (G.iska >= 6 ? 1.3 : 0); }
+  // bu bölümde önceki uçuş sayısına göre (kavuşup "bir daha" denese de sürer; bölüm değişince sıfırlanır):
+  // 2 uçuştan sonra biraz, 4 uçuştan sonra belirgin cömertlik (yıldız toplama/çekim yarıçapı, kavuşma alanı)
+  function onceUcus() { return Math.max(0, G.bolumDeneme - 1); }
+  function ydB() { const n = onceUcus(), l = A.denemeYardim; return l[Math.min(n, l.length - 1)]; }
+  function ydBuyuk() { return onceUcus() >= A.denemeBuyuk.n ? 1 : 0; }
+  function yardimDuzey() { return G.iska >= 6 ? 3 : G.iska >= 4 ? 2 : (G.iska >= 2 || onceUcus() >= 2) ? 1 : 0; }
+  function hedefR() { return A.hedefR0 + 0.6 * Math.max(yd(), ydB()) + (G.iska >= 6 ? 1.3 : 0) + A.denemeBuyuk.hedefR * ydBuyuk(); }
 
   // ---------- çekme (göreli sürükleme, her yerden) ----------
   let tutuyor = false, tutId = null;
@@ -163,6 +180,14 @@
   // havada dokunuş: kanat çırp (oyunda, oto testte ve görünmez denemede aynı kod)
   function kanatCirp() {
     if (P.durum !== 'ucus') return false;
+    // çok erken dokunuş (fırlar fırlamaz, hâlâ hızla yükselirken): boşa gitmesin, tepeye yaklaşınca kendiliğinden çırpar
+    if (G.kanatKalan > 0 && !G.kanatSira && G.ucusT < 0.5 && P.vy > 6) {
+      G.kanatSira = true;
+      K.esne -= 0.06; K.itY += 0.05; // anında minik tepki: "duydum, birazdan!"
+      OLAY.emit('kanatSira', { x: P.x, y: P.y, kalan: G.kanatKalan, toplam: aktifKanatHak() });
+      return true;
+    }
+    if (G.kanatSira) return false; // sıradaki çırpış beklerken ikinci dokunuş hak harcamaz
     if (G.kanatKalan <= 0 || G.ucusT <= 0.12) {
       // hak yok: ceza değil, minik tatlı bir kıpırtı (yol değişmez)
       if (G.kanatBosBekle <= 0) {
@@ -179,6 +204,9 @@
       P.vy = P.vy < 0 ? (Math.max(P.vy * 0.25, 0) + A.kanatVy) : Math.max(P.vy + A.kanatVy * 0.25, P.vy * 0.35 + A.kanatVy);
       P.vx = (P.vx < 0 ? 0 : P.vx) + A.kanatVx;
       G.suzT = 0.58;
+      if (A.inisKanat && P.vy > 0 && P.y < 6 && D.hedef.x - P.x < 10 && D.hedef.x - P.x > -2) { // Bilbo'ya yakın ve alçakta: kısa "iniş kanadı"
+        P.vy *= 0.5; P.vx -= A.kanatVx; G.suzT = 0.3;
+      }
       K.itY += 0.14; K.esne -= 0.12;
       OLAY.emit('kanat', { kalan: G.kanatKalan, toplam: aktifKanatHak(), x: P.x, y: P.y, vx: P.vx, vy: P.vy });
       return true;
@@ -186,12 +214,22 @@
     return false;
   }
 
+  function gecKanat() {
+    G.iskaGec = false; G.gecKanatT = 0;
+    P.y = D.zemin + R_PIRIL + 0.05; P.vy = 0; P.vx = Math.max(P.vx, 3);
+    G.yerTemas = 1; G.durdu = false; G.acele = false;
+    durumYap('ucus');
+    kanatCirp();
+  }
   function basla(e) {
     if (arayuzHedefi(e)) return;
     if (e && e.pointerType === 'mouse' && e.button !== 0) return;
     if (e && e.cancelable && e.preventDefault) e.preventDefault();
     if (P.durum === 'ucus') { kanatCirp(); return; }
-    if (P.durum === 'yuvar') { G.acele = true; return; } // sabırsız parmak: durunca beklemeden hemen döner
+    if (P.durum === 'yuvar') {
+      if (G.iskaGec && G.gecKanatT > 0 && G.kanatKalan > 0) { gecKanat(); return; } // yere değdiği an dokundu: kanat yine çırpar
+      G.acele = true; return; // sabırsız parmak: durunca beklemeden hemen döner
+    }
     if (P.durum === 'don' && !tutuyor) { // dönerken dokunduysa salıncağa ışınla ve hemen çekmeye başla
       P.x = D.sapan.x; P.y = D.sapan.y; P.vx = P.vy = 0; P.aci = 0;
       G.sox = G.soy = G.svx = G.svy = 0; G.acele = false;
@@ -257,10 +295,12 @@
     const kh = aktifKanatHak();
     G.ucusT = 0; G.yerTemas = 0; G.kanatKalan = kh; G.kanatVar = kh > 0; G.kanatBekle = 0; G.suzT = 0;
     G.sekBekle = 0; G.caliBekle = 0; G.ruzgarBekle = 0; G.halkaAlindi = []; G.sekSay = 0; G.kanatBosBekle = 0;
+    G.baloncukAlindi = []; G.esintiIc = []; G.kanatSira = false; G.iskaGec = false; G.gecKanatT = 0;
+    G.kos = null; G.bilboKostu = false; G.kosAday = false; G.ucusYildiz = 0;
     if (cekten) G.otoKanatT = [];
     G.izN = 0; G.izT = 0; G.yaklas = 0;
     G.sox = G.soy = G.svx = G.svy = 0;
-    G.deneme++;
+    G.deneme++; G.bolumDeneme++;
     durumYap('ucus');
     OLAY.emit('birak', { vx: vx, vy: vy });
   }
@@ -309,6 +349,64 @@
     izGonder();
   }
 
+  // ---------- 2. tur yardımcıları: baloncuk ve esinti (tek fizik işlevleri; oyun, dene, otoAra aynı kodu kullanır) ----------
+  // p: {x, y, vx, vy} (P ya da benzeri). Sayılar UCUS.yardimciAyar'da.
+  const BALONCUK = { pay: R_PIRIL, vyTasi: 0.3, vyEk: 12, vxEn: 9, vxEk: 1.5, vxTavan: 24, suz: 0.3 };
+  const ESINTI = { guc: 14, vxTavan: 22, dusTasi: 0.4, dusEn: -5, dusUs: 3 };
+  function baloncukDegdi(p, b) {
+    return Math.hypot(p.x - b.x, p.y - b.y) < (b.r != null ? b.r : 1.4) + BALONCUK.pay;
+  }
+  function baloncukItis(p) { // hangi yönden gelirse gelsin yumuşakça yukarı ve ileri
+    p.vy = Math.max(p.vy, 0) * BALONCUK.vyTasi + BALONCUK.vyEk;
+    p.vx = Math.min(Math.max(Math.max(p.vx, 0) + BALONCUK.vxEk, BALONCUK.vxEn), Math.max(BALONCUK.vxTavan, p.vx));
+    return p;
+  }
+  function esintiIcinde(p, e) { // ruzgarlar ile aynı kural: x orta, y alt kenar
+    return Math.abs(p.x - e.x) <= (e.w != null ? e.w : 8) * 0.5 && p.y >= e.y && p.y <= e.y + (e.h != null ? e.h : 4);
+  }
+  function esintiIvme(p, e, dt) { // ileri it, düşüşü biraz yavaşlat
+    const g = e.guc != null ? e.guc : ESINTI.guc;
+    if (p.vx < ESINTI.vxTavan) p.vx = Math.min(p.vx + g * dt, ESINTI.vxTavan);
+    if (p.vy < 0) {
+      p.vy += YC * ESINTI.dusTasi * dt;
+      if (p.vy < ESINTI.dusEn) p.vy = lerp(p.vy, ESINTI.dusEn, us(dt, ESINTI.dusUs));
+    }
+    return p;
+  }
+
+  // ---------- Bilbo koşar (uçuş fiziğine dokunmaz; yalnız durduktan sonra) ----------
+  function kosBolge(x) {
+    if (!A.bilboKos || (D.hedef.y || 0) > 0.5) return false;
+    const hx = D.hedef.x, ek = A.kosEk * Math.max(yd(), ydB()), d = x - hx;
+    if (d < -(A.kosOn + ek) || d > A.kosArka + ek) return false;
+    const dr = DW().dere; // arada su varsa Bilbo yüzmez: bağış yok
+    if (dr && isFinite(dr.x)) {
+      const a = Math.min(x, hx), b = Math.max(x, hx), w2 = (dr.w || 0) / 2;
+      if (a < dr.x + w2 && b > dr.x - w2) return false;
+    }
+    return true;
+  }
+  function kosSure(d) { return clamp(0.55 + Math.abs(d) * 0.1, 0.8, 1.3); }
+  function kosGuncelle(dt) { // yuvar durumunda, Pırıl durduktan sonra
+    const k = G.kos;
+    k.t += dt;
+    // çalı yüzünden Bilbo'nun yeri Pırıl'ın gerisine kaydıysa Pırıl da çalıdan uzaklaşıp yanına yuvarlanır
+    const px = k.x1 - 1.3;
+    if (Math.abs(P.x - px) > 0.01) { const yon = px > P.x ? 1 : -1, s = Math.min(Math.abs(P.x - px), 2.4 * dt); P.x += yon * s; P.aci -= yon * s / R_PIRIL; P.vx = 2.4 * yon; } else P.vx = 0;
+    if (!k.yayildi && k.t >= A.kosBekle) {
+      k.yayildi = true;
+      const c = CALI();
+      const engel = (c && c.x > Math.min(k.x0, k.x1) && c.x < Math.max(k.x0, k.x1)) ? c.x : null;
+      OLAY.emit('bilboKos', { x0: k.x0, x1: k.x1, sure: k.sure, pirilX: P.x, engel: engel });
+    }
+    if (k.t >= A.kosBekle + k.sure) {
+      G.kos = null;
+      D.hedef.x = k.x1; // Bilbo artık burada: kavuşma akışı (kamera, efekt, sarılma) yeni yerde
+      G.bilboKostu = true;
+      kavus();
+    }
+  }
+
   // ---------- fizik ----------
   function kavus() {
     durumYap('kavus');
@@ -316,10 +414,12 @@
     G.kavusX0 = P.x; G.kavusY0 = P.y;
     if (G.sim) return; // ekrana çizmeden deneme: kayda dokunma
     const n = bolumListesi().length;
+    const tekAtis = (G.ucusYildiz || 0) >= 5; // 5 yıldızın hepsi bu tek uçuşta
     if (G.yildizSay > (KAYIT.yildiz[G.bolumIdx] || 0)) KAYIT.yildiz[G.bolumIdx] = G.yildizSay;
+    if (tekAtis) KAYIT.tek[G.bolumIdx] = 1;
     if (G.bolumIdx + 1 < n && KAYIT.acik < G.bolumIdx + 2) KAYIT.acik = G.bolumIdx + 2;
     kayitYaz();
-    OLAY.emit('kavus', { bolumIdx: G.bolumIdx, yildiz: G.yildizSay, enIyiYildiz: KAYIT.yildiz[G.bolumIdx] });
+    OLAY.emit('kavus', { bolumIdx: G.bolumIdx, yildiz: G.yildizSay, enIyiYildiz: KAYIT.yildiz[G.bolumIdx], sonBolum: G.bolumIdx + 1 >= n, bolumSay: n, bilboKos: !!G.bilboKostu, tekAtis: tekAtis, ucusYildiz: G.ucusYildiz || 0, tekKayit: !!KAYIT.tek[G.bolumIdx] });
     izGonder();
   }
 
@@ -328,12 +428,13 @@
     const w = DW();
     if (P.durum === 'ucus') {
       G.ucusT += dt;
+      if (G.kanatSira && (P.vy <= 4 || G.ucusT >= 0.95)) { G.kanatSira = false; kanatCirp(); } // erken dokunuşun çırpışı
       const hx = D.hedef.x, hy = D.hedef.y + 0.7;
       // tahmini iniş
       const kalanT = (P.vy + Math.sqrt(P.vy * P.vy + 2 * YC * Math.max(P.y - hy, 0))) / YC;
       const inisX = P.x + P.vx * kalanT;
       // gizli yardım: henüz hedefe varmamışken son anda nazikçe ileri destek (geçtiyse asla geriye çekme)
-      const y = yd();
+      const y = Math.max(yd(), ydB()), yBuyuk = ydBuyuk();
       if (G.ucusT > 1.0 && G.yerTemas === 0 && P.vy < 0 && kalanT > 0.05 && kalanT < 1.4 && P.x <= hx + 0.5) {
         const fark = hx - inisX, pencere = 3.2 + 5 * y + (G.iska >= 6 ? 2 : 0);
         if (fark > 0 && fark < pencere) P.vx += Math.min(fark / Math.max(kalanT, 0.3), 0.4 + 4.5 * y) * us(dt, 3);
@@ -363,7 +464,7 @@
 
       // yıldızlar
       const yy = w.yildizYer || [];
-      const yR = A.yildizR + 0.35 * y, yMik = A.yildizMik + 0.8 * y; // ıskaladıkça yıldızlar da biraz daha cömert
+      const yR = A.yildizR + 0.35 * y + A.denemeBuyuk.yildizR * yBuyuk, yMik = A.yildizMik + 0.8 * y + A.denemeBuyuk.yildizMik * yBuyuk; // ıskaladıkça / denedikçe yıldızlar da biraz daha cömert
       for (let i = 0; i < yy.length && i < 5; i++) {
         if (G.yildizAlindi[i]) continue;
         const yd0 = Math.hypot(P.x - yy[i][0], P.y - yy[i][1]);
@@ -372,7 +473,7 @@
           P.x += (yy[i][0] - P.x) * mk; P.y += (yy[i][1] - P.y) * mk;
         }
         if (Math.hypot(P.x - yy[i][0], P.y - yy[i][1]) < yR) {
-          G.yildizAlindi[i] = true; G.yildizSay++; G.yildizT = 0.16;
+          G.yildizAlindi[i] = true; G.yildizSay++; G.ucusYildiz = (G.ucusYildiz || 0) + 1; G.yildizT = 0.16;
           OLAY.emit('yildiz', { i: i, x: yy[i][0], y: yy[i][1], toplam: G.yildizSay });
         }
       }
@@ -403,6 +504,32 @@
           P.vy = Math.max(P.vy * 0.5, 0) + 8.5;
           K.esne += 0.5;
           OLAY.emit('halka', { i: i, x: h.x, y: h.y, halka: h });
+        }
+      }
+
+      // baloncuklar (her yönden: "hop, yukarı!") ve esintiler (ileri iten şerit) — 2. tur yardımcıları; alan yoksa hiçbir şey yapmaz
+      const bl = w.baloncuklar;
+      if (bl && bl.length) {
+        for (let i = 0; i < bl.length; i++) {
+          const b = bl[i];
+          if (!b || G.baloncukAlindi[i] || !baloncukDegdi(P, b)) continue;
+          G.baloncukAlindi[i] = true;
+          baloncukItis(P);
+          G.suzT = Math.max(G.suzT, BALONCUK.suz); // kısa havada asılı kalma
+          G.yerTemas = 0; K.esne += 0.45;
+          OLAY.emit('baloncuk', { x: b.x, y: b.y, i: i, baloncuk: b });
+        }
+      }
+      const es = w.esintiler;
+      if (es && es.length) {
+        for (let i = 0; i < es.length; i++) {
+          const e = es[i];
+          const ic = !!e && esintiIcinde(P, e);
+          if (ic) {
+            esintiIvme(P, e, dt);
+            if (!G.esintiIc[i]) OLAY.emit('esinti', { x: P.x, y: P.y, i: i, esinti: e });
+          }
+          G.esintiIc[i] = ic;
         }
       }
 
@@ -478,10 +605,16 @@
           durumYap('yuvar');
           // hedefin dibine düştüyse (veya hedefe doğru geri yuvarlanıyorsa) ıskayı yuvarlanma bitince say
           G.iskaBekle = (P.x < hx && hx - P.x < hedefR() + 5 && P.vx >= 0) || (P.x >= hx && P.x - hx < hedefR() + 5 && P.vx < 0) || Math.abs(P.x - hx) < hedefR() + 0.65;
-          if (!G.iskaBekle) iskaYap();
+          G.kosAday = kosBolge(P.x) || kosBolge(P.x + P.vx * 0.3); // Bilbo'nun yakınında duracaksa ıskaya durunca karar ver
+          if (!G.iskaBekle && !G.kosAday) {
+            // geç kanat payı: yere değdiği an (0.2 sn) dokunursa hâlâ kanat çırpabilir; ıska bu pay bitince sayılır
+            if (G.kanatKalan > 0 && !G.sim) { G.gecKanatT = 0.2; G.iskaGec = true; }
+            else iskaYap();
+          }
         }
       }
     } else if (P.durum === 'yuvar') {
+      if (G.iskaGec) { G.gecKanatT -= dt; if (G.gecKanatT <= 0) { G.iskaGec = false; iskaYap(); } }
       const s = Math.sign(P.vx), a = Math.abs(P.vx);
       P.vx = s * Math.max(0, a - (7 + a * 1.8) * dt);
       P.x = clamp(P.x + P.vx * dt, D.solSinir, D.sagSinir);
@@ -501,8 +634,24 @@
       if (!G.durdu && ((Math.abs(P.vx) < 0.2 && G.durumT > 0.3) || G.durumT > (G.iskaBekle ? 1.35 : 0.75))) {
         if (Math.abs(P.x - D.hedef.x) < hedefR() + 0.65) { kavus(); return; }
         G.durdu = true; G.durduT = G.durumT; P.vx = 0;
-        if (G.iskaBekle) { G.iskaBekle = false; iskaYap(); }
+        if (kosBolge(P.x)) { // Bilbo sevinçle koşup gelir → kavuşma
+          if (G.iskaGec) { G.iskaGec = false; G.gecKanatT = 0; }
+          G.iskaBekle = false; G.kosAday = false;
+          let x1 = P.x + 1.3; // Bilbo Pırıl'ın sağında durur
+          const cl = CALI();
+          if (cl) { // çalının dibinde durmasın: kenarından ~1.6 m açıkta (gerekirse Pırıl da birkaç adım yanına gelir)
+            const pay = (cl.r || 1) + 0.9;
+            if (P.x < cl.x && x1 > cl.x - pay) x1 = cl.x - pay;
+            else if (P.x >= cl.x && x1 < cl.x + pay) x1 = cl.x + pay;
+          }
+          { // piknik sepeti (dunya.js ile aynı kural): Bilbo da Pırıl da sepetin üstüne denk gelmesin
+            const hx0 = D.hedef.x, sepX = (cl && cl.x > hx0 + 0.2 && cl.x < hx0 + 5) ? hx0 - 2.6 : hx0 + 1.9;
+            if (Math.abs(x1 - sepX) < 1.0 || Math.abs(x1 - 1.3 - sepX) < 1.0) x1 = (P.x < sepX) ? sepX - 1.0 : sepX + 2.3;
+          }
+          G.kos = { t: 0, x0: D.hedef.x, x1: x1, sure: kosSure(x1 - D.hedef.x), yayildi: false };
+        } else if (G.iskaBekle || G.kosAday) { G.iskaBekle = false; G.kosAday = false; iskaYap(); }
       }
+      if (G.kos) { kosGuncelle(dt); return; }
       // durduktan sonra ~0,95 sn kıkırdama/silkelenme payı (dokunursa hemen döner)
       if (G.durdu && (G.durumT - G.durduT > 0.95 || G.acele)) {
         G.donX0 = P.x; G.donY0 = P.y; P.vx = 0;
@@ -535,24 +684,32 @@
     }
   }
 
-  function yeniden() {
+  // yeniden(birikim): birikim true ise ("bir daha") bu bölümde alınmış yıldızlar kalır (5'i tamamsa baştan);
+  // bölüm seçilince/değişince birikim false (hepsi sıfırlanır).
+  function yeniden(birikim) {
     tutuyor = false; tutId = null;
     C.px0 = C.py0 = C.px = C.py = C.ox = C.oy = 0; C.gecerli = false; C.vx = C.vy = C.guc = 0;
     P.x = D.sapan.x; P.y = D.sapan.y; P.vx = P.vy = 0; P.aci = 0;
     CEK.x = P.x; CEK.y = P.y; CEK.guc = 0;
-    for (let i = 0; i < 5; i++) G.yildizAlindi[i] = false;
-    G.yildizSay = 0; G.iska = 0; G.deneme = 0; G.izN = 0; G.sonSonuc = '';
+    const tut = birikim === true && G.yildizSay > 0 && G.yildizSay < 5;
+    if (!tut) for (let i = 0; i < 5; i++) G.yildizAlindi[i] = false;
+    const alinan = [];
+    for (let i = 0; i < 5; i++) if (G.yildizAlindi[i]) alinan.push(i);
+    G.yildizSay = alinan.length; G.ucusYildiz = 0; G.iska = 0; G.deneme = 0; G.izN = 0; G.sonSonuc = '';
     G.gucEk = 0; G.yonSalla = 0; G.kisaSalla = 0; G.ayna = false;
     const kh = aktifKanatHak();
     G.ucusT = 0; G.yerTemas = 0; G.sekBekle = 0; G.caliBekle = 0;
     G.kanatKalan = kh; G.kanatVar = kh > 0; G.kanatBekle = 0; G.suzT = 0;
-    G.halkaAlindi = []; G.otoKanatT = []; G.ruzgarBekle = 0;
+    G.halkaAlindi = []; G.otoKanatT = []; G.ruzgarBekle = 0; G.baloncukAlindi = []; G.esintiIc = []; G.kanatSira = false; G.iskaGec = false; G.gecKanatT = 0;
+    G.kos = null; G.bilboKostu = false; G.kosAday = false;
+    { const bb = aktifBolum(); if (bb && bb.hedef) { D.hedef.x = bb.hedef.x; D.hedef.y = bb.hedef.y || 0; } } // Bilbo koştuysa yerine döner
     G.sox = G.soy = G.svx = G.svy = 0; G.zs = 1; G.durakT = 0; G.yildizT = 0;
     G.yaklas = 0; G.acele = false; G.durdu = false; G.seviye = 0; G.otoT = 0; G.sonYavas = 1;
     K.itX = K.itY = K.esne = K.ox = 0;
     P.durum = '';
     durumYap('bekle');
-    OLAY.emit('yeniden');
+    // birikim: alinan = bu bölümde önceden alınmış yıldızlar (efekt bunları gizli/soluk tutar, sayaç bunlarla dolu başlar)
+    OLAY.emit('yeniden', { birikim: tut, alinan: alinan, toplam: alinan.length });
   }
 
   // ---------- zaman ölçeği (his) ----------
@@ -591,9 +748,15 @@
     // Yatayda da uzun parkurda aynısı: kısa süre bütün yol, sonra salıncak ve ilk yıldızlar (yarı genişlik ~19 m)
     let yakK = 0;
     const yakHw = dik ? 13 : 19;
+    // Dikeyde çok uzun parkur (40. bölüm gibi) bütünüyle sığınca her şey minicik bir şerit oluyor: önce Bilbo'nun olduğu
+    // son kısmı göster, sonra yıldızların üstünden salıncağa doğru kay. Bir uçuştan sonra doğrudan salıncağa yakın kal.
+    const dikUzun = dik && hw > 40, panHw = 24;
+    let panSure = 1.6, panGec = -1;
+    if (dikUzun && (G.deneme > 0 || P.durum !== 'bekle')) { cx = sol + yakHw; hw = yakHw; yakK = 1; }
+    else if (dikUzun) { hw = panHw; cx = sag - panHw; panSure = 1.5; panGec = 0.9; } // toplam ~2.4 sn; çekmeye başlayınca zaten çekiş kamerası alır
     if (hw > yakHw + 1 && P.durum === 'bekle') {
-      const gec = G.deneme > 0 ? 1.3 : 2.4; // ilk açılışta parkura uzun bakış, sonraki dönüşlerde kısa
-      const t = clamp((G.durumT - gec) / 1.6, 0, 1), k = t * t * (3 - 2 * t);
+      const gec = panGec >= 0 ? panGec : G.deneme > 0 ? 1.3 : 2.4; // ilk açılışta parkura uzun bakış, sonraki dönüşlerde kısa
+      const t = clamp((G.durumT - gec) / panSure, 0, 1), k = t * t * (3 - 2 * t);
       cx = lerp(cx, sol + yakHw, k); hw = lerp(hw, yakHw, k); // salıncağa daha yakın: Pırıl büyük görünsün
       yakK = k;
     }
@@ -604,6 +767,8 @@
     for (let i = 0; i < bl.length; i++) enYuksekY = Math.max(enYuksekY, bl[i].y + 2.5);
     const hk = w.halkalar || [];
     for (let i = 0; i < hk.length; i++) enYuksekY = Math.max(enYuksekY, hk[i].y + hk[i].r + 2.0);
+    const bc = w.baloncuklar || [];
+    for (let i = 0; i < bc.length; i++) if (bc[i]) enYuksekY = Math.max(enYuksekY, bc[i].y + (bc[i].r || 1.4) + 2.0);
     const alt = -2.2;
     let hh = clamp(Math.max(hw * (dik ? 0.52 : 0.42), (enYuksekY - alt) * 0.52), 9.5, 17.0);
     if (yakK > 0) hh = lerp(hh, clamp(hw * (dik ? 0.52 : 0.5), 9.5, 17.0), yakK); // yaklaşınca yükseklik de daralsın
@@ -657,9 +822,21 @@
       hh = lerp(lerp(dik ? 2.55 : 2.5, dik ? 2.05 : 1.95, sarilW), 2.45, dansW);
       alt = -1.5;
       cyZorla = yH + lerp(lerp(1.15, 1.05, sarilW), 1.22, dansW);
+      if (G.bolumIdx + 1 >= bolumListesi().length) { // BÜYÜK FİNAL: sarılmadan sonra geri ve yukarı açıl; ikisi alt üçte birde, üstte gökyüzü (havai fişekler)
+        const f0 = clamp((tK - 3.2) / 1.2, 0, 1), fW = f0 * f0 * (3 - 2 * f0); // önce 3.2 sn yakın: sarılma + sevinç dansı
+        if (fW > 0) {
+          hw = lerp(hw, dik ? 6 : 9, fW); hh = lerp(hh, dik ? 8.5 : 6, fW);
+          const dF = Math.max(hw / (tanY * asp), hh / tanY), vF = dF * tanY;
+          cyZorla = lerp(cyZorla, yH + 1.0 + 0.62 * vF, fW);
+        }
+      }
     } else if (P.durum === 'don' || P.durum === 'yuvar') {
       if (P.durum === 'yuvar') {
         cx = P.x + clamp(P.vx, -8, 12) * 0.08; hw = dik ? 5.2 : 7.5; hh = 4.8; alt = -1.2;
+        if (G.kos || (A.bilboKos && G.durdu === false && G.kosAday && kosBolge(P.x))) { // Bilbo koşup gelecek: ikisi de kadrajda
+          const hx = G.kos ? G.kos.x0 : D.hedef.x;
+          cx = (P.x + hx) / 2; hw = Math.max(hw, Math.abs(hx - P.x) / 2 + (dik ? 2.6 : 3.6)); hh = Math.max(hh, dik ? 4.8 : 4.4);
+        }
       } else {
         donW = donKameraGecis();
         const yon = Math.sign(D.sapan.x - G.donX0) || -1;
@@ -697,6 +874,40 @@
       const d0 = Math.max(hw / (tanY * asp), hh / tanY), visH = d0 * tanY;
       const cyYer = alt + visH * (dik ? 0.84 : 1);
       cyZorla = Math.max(cyYer, P.y - visH * 0.05 + clamp(P.vy, -10, 15) * 0.14 * (1 - k * 0.65));
+      // güvenli alan: Pırıl'ın önündeki/üstündeki (14 m içinde) toplanmamış yıldızlar ve halkalar üstteki göstergenin
+      // (%14) altında ve yan kenarlardan içeride kalsın; gerekirse kamera yukarı bakar, sağa kayar ya da biraz uzaklaşır
+      const wS = DW(), yyS = wS.yildizYer || [], hkS = wS.halkalar || [];
+      let ust = -1e9, sagS = -1e9;
+      for (let j = 0; j < yyS.length && j < 5; j++) {
+        if (G.yildizAlindi[j]) continue;
+        const sx = yyS[j][0], sy = yyS[j][1];
+        if (sx < P.x - 2 || Math.hypot(sx - P.x, sy - P.y) > 16) continue;
+        ust = Math.max(ust, sy + 0.9); sagS = Math.max(sagS, sx + 1.0);
+      }
+      for (let j = 0; j < hkS.length; j++) {
+        const hq = hkS[j];
+        if (!hq || G.halkaAlindi[j] || hq.x < P.x - 2 || Math.hypot(hq.x - P.x, hq.y - P.y) > 16) continue;
+        ust = Math.max(ust, hq.y + (hq.r || 1.5) * 0.8); sagS = Math.max(sagS, hq.x + (hq.r || 1.5));
+      }
+      G.kamGuv = false;
+      if (ust > -1e8 && A.guvenliKamera) {
+        let vH = Math.max(hw / asp, hh);
+        const wCap = dik ? 13.5 : 19, hCap = dik ? 20 : 18, UK = 0.6; // UK: üst %16 gösterge şeridi + yıldız payı
+        if (ust > cyZorla + UK * vH || sagS > cx + 0.9 * vH * asp) G.kamGuv = true;
+        if (sagS > cx + 0.9 * vH * asp) { // önde: sağa kay, yetmezse biraz aç
+          const istW = clamp((sagS - P.x + 0.4) / 1.55, 0, wCap);
+          if (istW > vH * asp) { hw = Math.max(hw, istW); vH = Math.max(hw / asp, hh); }
+          const vW = vH * asp;
+          cx = Math.max(cx, Math.min(sagS - 0.9 * vW, P.x + 0.62 * vW));
+        }
+        let cyU = ust - UK * vH;
+        if (cyU > cyZorla) { // yukarıda: yukarı bak, Pırıl alt kenara inmesin; yetmezse biraz uzaklaş
+          const istH = clamp((ust - P.y + 0.7) / (UK + 0.8), 0, hCap);
+          if (istH > vH) { hh = Math.max(hh, istH); vH = Math.max(hw / asp, hh); }
+          cyU = Math.min(ust - UK * vH, P.y - 0.7 + 0.8 * vH);
+          cyZorla = Math.max(cyZorla, cyU, alt + vH * (dik ? 0.84 : 1));
+        }
+      }
     }
     const d = Math.max(hw / (tanY * asp), hh / tanY);
     const visH = d * tanY;
@@ -713,8 +924,8 @@
       if (K.sonDurum !== 'ucus') K.ox = K.cx - P.x;
       K.ox = lerp(K.ox, h.cx - P.x, us(dt, 2.2));
       K.cx = P.x + K.ox;
-      K.cy = lerp(K.cy, h.cy, us(dt, h.cy > K.cy ? 4.5 : 3));
-      K.d = lerp(K.d, h.d, us(dt, h.d < K.d ? 2.0 : 1.6));
+      K.cy = lerp(K.cy, h.cy, us(dt, h.cy > K.cy ? (G.kamGuv ? 8 : 4.5) : 3));
+      K.d = lerp(K.d, h.d, us(dt, h.d < K.d ? 2.0 : (G.kamGuv ? 5 : 1.6))); // yıldız göstergenin altına girecekse daha çabuk açıl
     } else {
       K.cx = lerp(K.cx, h.cx, us(dt, hz));
       K.cy = lerp(K.cy, h.cy, us(dt, hz));
@@ -810,6 +1021,7 @@
     const l = bolumListesi();
     Object.assign(_yedekG, G);
     _yedekG.yildizAlindi = G.yildizAlindi.slice(); _yedekG.halkaAlindi = G.halkaAlindi.slice(); _yedekG.otoKanatT = G.otoKanatT.slice();
+    _yedekG.baloncukAlindi = G.baloncukAlindi.slice(); _yedekG.esintiIc = G.esintiIc.slice();
     Object.assign(_yedekK, K);
     _yedekD.hx = D.hedef.x; _yedekD.hy = D.hedef.y; _yedekD.sag = D.sagSinir; _yedekD.tavan = D.tavan;
     const p0 = { x: P.x, y: P.y, vx: P.vx, vy: P.vy, aci: P.aci, durum: P.durum };
@@ -826,10 +1038,15 @@
         D.sagSinir = Math.max(58, D.hedef.x + 14); D.tavan = b.tavan || 34;
       }
       G.iska = sec.iska | 0; G.gucEk = 0;
+      G.bolumDeneme = sec.deneme | 0; // bu bölümde önceki uçuş sayısı (gizli yardım için; varsayılan 0 = yardımsız)
       for (let i = 0; i < 5; i++) G.yildizAlindi[i] = false;
       G.yildizSay = 0; G.durakT = 0; G.yildizT = 0; G.zs = 1; G.yaklas = 0;
+      if (Array.isArray(sec.alinan)) { // önceki ıskalı uçuşlarda alınmış yıldızlar (oyunda "bir daha"ya kadar kalır)
+        for (let i = 0; i < sec.alinan.length; i++) { const j = sec.alinan[i] | 0; if (j >= 0 && j < 5 && !G.yildizAlindi[j]) { G.yildizAlindi[j] = true; G.yildizSay++; } }
+      }
       P.durum = 'bekle';
       firlatIc(vx, vy, false);
+      if (sec.x0 != null && sec.y0 != null && isFinite(sec.x0) && isFinite(sec.y0)) { P.x = +sec.x0; P.y = +sec.y0; } // çekilen yerden fırlatma
       G.otoKanatT = (kanatlar || []).slice().sort(function (a, b) { return a - b; });
       const iz = sec.iz ? [[+P.x.toFixed(2), +P.y.toFixed(2)]] : null;
       let t = 0, enX = P.x, enY = P.y, kanatSay = 0, kavustu = false, f = 0;
@@ -852,7 +1069,9 @@
       sonuc = {
         yildiz: G.yildizSay, kavustu: kavustu, x: +P.x.toFixed(2), y: +P.y.toFixed(2),
         yildizlar: yl, kanat: kanatSay, enX: +enX.toFixed(2), enY: +enY.toFixed(2), sure: +t.toFixed(2),
-        hedefX: D.hedef.x, durum: P.durum, inisX: inisX, inisY: inisY
+        hedefX: G.bilboKostu && l[G.bolumIdx] && l[G.bolumIdx].hedef ? l[G.bolumIdx].hedef.x : D.hedef.x, // Bilbo koştuysa bölümün asıl hedefi
+        durum: P.durum, inisX: inisX, inisY: inisY,
+        bilboKos: !!G.bilboKostu, ucusYildiz: G.ucusYildiz || 0, tekAtis: (G.ucusYildiz || 0) >= 5
       };
       if (iz) sonuc.iz = iz;
     } finally {
@@ -924,6 +1143,166 @@
     firlatIc(vc, vc * tn, false);
   }
 
+  // ---------- ölçü: 5 yaşında çocuk taklidi (çizmeden, dene ile; gizli yardım dahil) ----------
+  // Çekiş uzayı: r = çekiş oranı (0..1, tam çekişin oranı), a = açı (derece). Oyunla aynı dönüşüm (cekHesapla).
+  function cekHiz(r, aDer, gucEk) {
+    if (r < A.olu) return null;
+    const a = clamp(aDer, A.aciMin, A.aciMax) * DER, rr = clamp(r, 0, 1);
+    const f = Math.pow((rr - A.olu) / (1 - A.olu), A.us);
+    const v = Math.min(lerp(A.vMin, A.vMax, f) * (1 + (gucEk || 0)), A.vMax);
+    return {
+      vx: Math.cos(a) * v, vy: Math.sin(a) * v,
+      x0: D.sapan.x - Math.cos(a) * A.cekEn * rr, y0: Math.max(D.sapan.y - Math.sin(a) * A.cekEn * rr, 1.3)
+    };
+  }
+  function cekOran(vx, vy) { // hızdan (gucEk yok) çekiş oranı ve açı
+    const v = Math.hypot(vx, vy), f = clamp((v - A.vMin) / (A.vMax - A.vMin), 0, 1);
+    return { r: A.olu + (1 - A.olu) * Math.pow(f, 1 / A.us), a: Math.atan2(vy, vx) / DER };
+  }
+  function yolParlak(c, yy, alinan) { // efekt.js'teki gibi: çekerken görünen yay (salt parabol) hangi yıldızların 1.7 m yakınından geçiyor
+    let n = 0;
+    const hy = R_PIRIL, a_ = 0.5 * YC, b_ = -c.vy, c_ = hy - c.y0, disk = b_ * b_ - 4 * a_ * c_;
+    const sSon = disk >= 0 ? Math.min((-b_ + Math.sqrt(disk)) / (2 * a_), 7.5) : 4;
+    for (let i = 0; i < yy.length && i < 5; i++) {
+      if (alinan[i]) continue;
+      let en = 1e9;
+      for (let k = 0; k <= 56; k++) {
+        const s = sSon * k / 56, dx = c.x0 + c.vx * s - yy[i][0], dy = c.y0 + c.vy * s - 0.5 * YC * s * s - yy[i][1];
+        en = Math.min(en, dx * dx + dy * dy);
+      }
+      if (en < 1.7 * 1.7) n++;
+    }
+    return n;
+  }
+  const _cozumBellek = [];
+  function cocukCozum(idx, sec) {
+    const b = bolumListesi()[idx];
+    if (sec && sec.cozum) { const o = cekOran(sec.cozum.vx, sec.cozum.vy); return { r: o.r, a: o.a, kt: (sec.cozum.kt || []).slice() }; }
+    const bel = _cozumBellek[idx];
+    if (bel && bel.b === b) return bel.c;
+    // tasarımcının gerçek çekişle doğruladığı ana çözüm: { cozum: { cekis: r, aci: derece, kanat: [sn…] } }
+    if (b && b.cozum && isFinite(b.cozum.cekis) && isFinite(b.cozum.aci)) {
+      const kt = Array.isArray(b.cozum.kanat) ? b.cozum.kanat.slice() : [], c = cekHiz(+b.cozum.cekis, +b.cozum.aci, 0);
+      const s = c ? dene(c.vx, c.vy, kt, idx, { x0: c.x0, y0: c.y0 }) : null;
+      const cz = { r: +b.cozum.cekis, a: +b.cozum.aci, kt: kt, yildiz: s ? s.yildiz : 0, kavustu: !!(s && s.kavustu), tasarim: true };
+      _cozumBellek[idx] = { b: b, c: cz };
+      return cz;
+    }
+    // çocuk çektiği yerden fırlatır: çekiş uzayında (oran × açı × kanat anları) tara, en sağlam 5 yıldız + kavuşmayı seç
+    const kh = b.kanatHak != null ? b.kanatHak : 1, ka = otoKanatAdaylari(kh), ad = [];
+    for (let r = 0.12; r <= 0.951; r += 0.03) for (let a = 20; a <= 68.01; a += 2.5) {
+      const c = cekHiz(r, a, 0);
+      if (!c) continue;
+      for (let k = 0; k < ka.length; k++) {
+        const s = dene(c.vx, c.vy, ka[k], idx, { x0: c.x0, y0: c.y0 });
+        if (s.kavustu) ad.push({ r: r, a: a, kt: ka[k], yildiz: s.yildiz, kavustu: true, sk: s.yildiz * 100 - ka[k].length * 3 });
+      }
+    }
+    if (!ad.length) { _cozumBellek[idx] = { b: b, c: null }; return null; }
+    ad.sort(function (p, q) { return q.sk - p.sk; });
+    const ust = ad[0].sk, sap = [[0.04, 0, 0], [-0.04, 0, 0], [0, 4, 0], [0, -4, 0], [0, 0, 0.3], [0, 0, -0.3], [0.03, 3, 0.2], [-0.03, -3, -0.2]];
+    let en = null, enS = -1e9;
+    for (let i = 0; i < ad.length && i < 40 && ad[i].sk >= ust - 100; i++) {
+      const p = ad[i];
+      let s = p.sk;
+      for (let j = 0; j < sap.length; j++) {
+        const c = cekHiz(p.r * (1 + sap[j][0]), p.a + sap[j][1], 0);
+        if (!c) continue;
+        const kt = p.kt.map(function (q) { return q + sap[j][2]; });
+        const q = dene(c.vx, c.vy, kt, idx, { x0: c.x0, y0: c.y0 });
+        if (q.kavustu) s += 8 + (q.yildiz >= p.yildiz ? 12 : 0);
+      }
+      s -= Math.abs(p.r - 0.5) * 10; // çocuğun tahmin edebileceği orta çekiş biraz yeğlenir
+      if (s > enS) { enS = s; en = p; }
+    }
+    _cozumBellek[idx] = { b: b, c: en };
+    return en;
+  }
+  function rastgele(tohum) { // mulberry32
+    let s = (tohum >>> 0) || 1;
+    return function () {
+      s = (s + 0x6D2B79F5) >>> 0; let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  // cocukDene(idx, tohum, {enCok:12, ogren:0.5, cozum:{vx,vy,kt}}) → {deneme (5 yıldız + kavuşmanın geldiği uçuş; yoksa null), atislar}
+  function cocukDene(idx, tohum, secenek) {
+    const sec = secenek || {}, l = bolumListesi();
+    idx = clamp(idx != null ? idx | 0 : G.bolumIdx, 0, l.length - 1);
+    const b = l[idx], yy = b.yildizYer || [], hedefX = b.hedef ? b.hedef.x : D.hedef.x;
+    const coz = cocukCozum(idx, sec);
+    const rnd = rastgele(tohum != null ? tohum : 1), u = function (a, c) { return a + (c - a) * rnd(); };
+    const enCok = sec.enCok || 12, ogren = sec.ogren != null ? sec.ogren : 0.5;
+    const hedefKt = coz ? coz.kt : [];
+    const kh = b.kanatHak != null ? b.kanatHak : 1;
+    // ilk çekiş: rastgele ama makul
+    let ir = u(0.3, 0.75), ia = u(28, 58);
+    let iska = 0, gucEk = 0, alinan = [false, false, false, false, false];
+    const atislar = [];
+    // ilk: birikmiş 5★ + kavuşmanın geldiği uçuş; tek: tek uçuşta 5★ + kavuşma (ustalık), tekEn uçuşa kadar aranır
+    let ilk = null, tek = null;
+    const tekEn = sec.tekEn || 8;
+    for (let n = 0; n < Math.max(enCok, tekEn); n++) {
+      if (ilk != null && n >= tekEn) break;
+      if (ilk == null && n >= enCok) break;
+      // parlayan yıldızlara bakarak çekişi biraz oynatır (parmağı gezdirip yayın yıldızdan geçtiği yeri arar)
+      let br = ir, ba = ia, bp = -1;
+      for (let k = 0; k < (sec.parlakYok ? 1 : 7); k++) {
+        const rr = k === 0 ? ir : ir * (1 + u(-0.06, 0.06)), aa = k === 0 ? ia : ia + u(-5, 5);
+        const c = cekHiz(rr, aa, gucEk);
+        if (!c) continue;
+        const p = yolParlak(c, yy, alinan);
+        if (p > bp) { bp = p; br = rr; ba = aa; }
+      }
+      // parmak titremesi ve kanat anı gürültüsü
+      const r = clamp(br * (1 + u(-0.08, 0.08)), 0, 1), a = ba + u(-5, 5);
+      const kGur = n === 0 ? 0.6 : 0.35, kt = [];
+      for (let j = 0; j < hedefKt.length; j++) kt.push(Math.max(0.15, hedefKt[j] + u(-kGur, kGur)));
+      const c = cekHiz(r, a, gucEk);
+      if (!c) { atislar.push({ r: +r.toFixed(3), a: +a.toFixed(1), salla: true }); ir = Math.max(ir, 0.3); continue; } // fırlamadı (deneme sayılmaz ama süre geçer)
+      if (sec.fazlaKanat !== false && kh > 0) {
+        // gerçek çocuk: hakkı varken bazen fazladan dokunur, bazen bir kanadı unutur; denedikçe biraz azalır
+        const az = Math.max(0.4, 1 - 0.1 * n);
+        if (kt.length && rnd() < 0.20 * az) kt.splice(Math.floor(rnd() * kt.length), 1);
+        const q = rnd(), ekSay = q < 0.20 * az ? 2 : q < 0.65 * az ? 1 : 0;
+        const tepe = Math.max(0.3, c.vy / YC);
+        for (let e = 0; e < ekSay && kt.length < kh; e++) {
+          kt.push(Math.max(0.6, rnd() < 0.5 ? tepe + u(-0.3, 0.3) : tepe + u(0.3, 1.6)));
+        }
+        kt.sort(function (p, q2) { return p - q2; });
+      }
+      const al = []; for (let i = 0; i < 5; i++) if (alinan[i]) al.push(i);
+      const s = dene(c.vx, c.vy, kt, idx, { iska: sec.yardimYok ? 0 : iska, deneme: sec.yardimYok ? 0 : n, alinan: al, x0: c.x0, y0: c.y0 });
+      atislar.push({ r: +r.toFixed(3), a: +a.toFixed(1), kt: kt.map(function (q) { return +q.toFixed(2); }), parlak: bp, yildiz: s.yildiz, kavustu: s.kavustu, x: s.x });
+      if (s.kavustu && s.tekAtis && tek == null) tek = n + 1;
+      if (s.kavustu) {
+        if (s.yildiz >= 5 && ilk == null) ilk = n + 1;
+        if (ilk != null && (tek != null || n + 1 >= tekEn)) return { deneme: ilk, tek: tek, atislar: atislar, cozum: coz };
+        iska = 0; gucEk = 0; // "bir daha": oyundaki gibi yıldızlar birikir (5 tamamsa baştan)
+        if (s.yildiz >= 5 || sec.birikimYok) alinan = [false, false, false, false, false];
+        else for (let i = 0; i < s.yildizlar.length; i++) alinan[s.yildizlar[i]] = true;
+      } else {
+        iska++;
+        if (iska >= 2 && s.x < hedefX - 8) gucEk = Math.min(gucEk + 0.3, 1.6);
+        else if (iska >= 2 && s.x < hedefX) gucEk = Math.min(gucEk + 0.12, 1.6);
+        else if (s.x > hedefX + 2) gucEk = Math.max(gucEk - 0.3, 0);
+        for (let i = 0; i < s.yildizlar.length; i++) alinan[s.yildizlar[i]] = true;
+      }
+      // öğrenme: önceki atışın izine ve kaçan yıldızlara bakıp doğru çekişe doğru düzeltir
+      if (coz) { ir += (coz.r - ir) * ogren; ia += (coz.a - ia) * ogren; }
+    }
+    return { deneme: ilk, tek: tek, atislar: atislar, cozum: coz };
+  }
+  function cocukOzet(idx, n, secenek) {
+    const say = n || 40, d = [];
+    let tekSay = 0;
+    for (let t = 1; t <= say; t++) { const r = cocukDene(idx, t * 7919 + 13, secenek); d.push(r.deneme == null ? 99 : r.deneme); if (r.tek != null && r.tek <= 8) tekSay++; }
+    d.sort(function (p, q) { return p - q; });
+    const ic = function (k) { return Math.round(100 * d.filter(function (x) { return x <= k; }).length / say); };
+    return { bolum: (idx | 0) + 1, medyan: d[Math.floor(say / 2)], en3: ic(3), en5: ic(5), en8: ic(8), hic: Math.round(100 * d.filter(function (x) { return x === 99; }).length / say), tek8: Math.round(100 * tekSay / say), cozum: cocukCozum(idx | 0, secenek) };
+  }
+
   // ---------- kurulum ve ana döngü ----------
   function guvenli(ad, f) { try { f(); } catch (e) { console.warn(ad + ' hatası:', e); } }
 
@@ -940,9 +1319,18 @@
       hepsiAcik: HEPSI_ACIK,
       yildizlar: KAYIT.yildiz.slice(0, l.length),
       enIyiYildiz: KAYIT.yildiz[G.bolumIdx] || 0,
+      tekler: KAYIT.tek.slice(0, l.length), tek: !!KAYIT.tek[G.bolumIdx],
+      alinan: G.yildizAlindi.map(function (a, i) { return a ? i : -1; }).filter(function (i) { return i >= 0; }),
       kanatHak: aktifKanatHak(),
       kanatKalan: G.kanatKalan,
       hedef: { x: D.hedef.x, y: D.hedef.y },
+      biyom: b.biyom != null ? b.biyom : null,
+      hava: b.hava || null,
+      zeminTur: b.zeminTur || null,
+      kiyafet: b.kiyafet || null,
+      gece: !!b.gece,
+      sonBolum: G.bolumIdx + 1 >= l.length,
+      bolumVeri: b,
       bolum: b
     };
   }
@@ -965,6 +1353,8 @@
       DUNYA.niluferler = b.niluferler || [];
       DUNYA.ruzgarlar = b.ruzgarlar || [];
       DUNYA.halkalar = b.halkalar || [];
+      DUNYA.baloncuklar = b.baloncuklar || [];
+      DUNYA.esintiler = b.esintiler || [];
       DUNYA.dere = b.dere || null;
       DUNYA.gece = !!b.gece;
       DUNYA.hedef = { x: D.hedef.x, y: D.hedef.y };
@@ -976,6 +1366,7 @@
     bolumAyarla(idx);
     K.hazir = false;
     yeniden();
+    G.bolumDeneme = 0; // gizli "denedikçe cömertleş" yardımı yeni bölümde baştan
     const bilgi = bolumBilgi();
     OLAY.emit('bolum', bilgi);
     return bilgi;
@@ -1094,7 +1485,7 @@
   function cekBirak(dx, dy, sonucBekle, kanatSn) {
     // yol: dx bir dizi ise [[dx,dy],…] parmak yolu (titreme vb.), değilse düz çekiş
     let g = 0;
-    if (P.durum === 'kavus') yeniden(); // "bir daha" düğmesi gibi
+    if (P.durum === 'kavus') yeniden(true); // "bir daha" düğmesi gibi
     while (P.durum !== 'bekle' && g++ < 600) adim(1 / 60, true);
     for (let i = 0; i < 40 && (Math.abs(G.sox) + Math.abs(G.svx)) > 0.02; i++) adim(1 / 60, true);
     const yol = Array.isArray(dx) ? dx : null;
@@ -1109,11 +1500,15 @@
     const son = adimlar[adimlar.length - 1];
     birak(sahte(x0 + son[0], y0 + son[1]));
     if (!sonucBekle) return Object.assign({ cek: cekBilgi }, window.UCUS.bilgi());
-    let t = 0, kanatOldu = false, enX = P.x;
+    let t = 0, enX = P.x;
+    // kanatSn: sayı ya da dizi (uçuş saatine göre dokunma anları, sn)
+    const kanatlar = kanatSn == null ? [] : (Array.isArray(kanatSn) ? kanatSn.slice() : [kanatSn])
+      .filter(function (q) { return isFinite(q); }).sort(function (a, b) { return a - b; });
+    let kanatI = 0;
     while (t < 20) {
       adim(1 / 60, true); t += 1 / 60;
       if (P.durum === 'ucus') enX = Math.max(enX, P.x);
-      if (kanatSn != null && !kanatOldu && P.durum === 'ucus' && G.ucusT >= kanatSn) { kanatOldu = true; basla(sahte(10, 10)); }
+      while (kanatI < kanatlar.length && P.durum === 'ucus' && G.ucusT >= kanatlar[kanatI]) { kanatI++; basla(sahte(10, 10)); }
       if (G.sonSonuc && (G.sonSonuc === 'salla' || G.sonSonuc === 'kavus' || G.iska > iska0)) break;
     }
     return {
@@ -1131,6 +1526,8 @@
       return {
         durum: P.durum, P: { x: +P.x.toFixed(2), y: +P.y.toFixed(2), vx: +P.vx.toFixed(2), vy: +P.vy.toFixed(2) },
         bolum: G.bolumIdx + 1, bolumIdx: G.bolumIdx, toplamBolum: bolumListesi().length,
+        biyom: aktifBolum().biyom != null ? aktifBolum().biyom : null, hava: aktifBolum().hava || null,
+        zeminTur: aktifBolum().zeminTur || null, kiyafet: aktifBolum().kiyafet || null, gece: !!aktifBolum().gece,
         kanatKalan: G.kanatKalan, kanatHak: aktifKanatHak(), suzT: +G.suzT.toFixed(2),
         yildiz: G.yildizSay, deneme: G.deneme, iska: G.iska, yardim: yardimDuzey(), hedefR: +hedefR().toFixed(2), gucEk: +G.gucEk.toFixed(2), ayna: G.ayna,
         sonSonuc: G.sonSonuc, zs: +G.zs.toFixed(2),
@@ -1160,15 +1557,23 @@
       return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height };
     },
     bolumBilgi: bolumBilgi,
+    bolumVeri: function (idx) { const l = bolumListesi(); return idx != null ? (l[clamp(idx | 0, 0, l.length - 1)] || null) : aktifBolum(); },
+    // 2. tur yardımcıları: sayılar ve tek fizik işlevleri (p = {x,y,vx,vy}; p değişir ve döner)
+    yardimciAyar: { baloncuk: BALONCUK, esinti: ESINTI },
+    baloncukDegdi: baloncukDegdi, baloncukItis: baloncukItis,
+    esintiIcinde: esintiIcinde, esintiIvme: esintiIvme,
     otoFirlat: otoFirlat,
     dene: dene,
+    cocukDene: cocukDene, cocukOzet: cocukOzet,
+    cekHiz: function (r, a, gucEk) { return cekHiz(r, a, gucEk); },
     otoAra: function (idx) { return otoArama(idx != null ? idx : G.bolumIdx); },
     firlat: function (vx, vy, kanatlar) { firlatIc(vx, vy, false); if (Array.isArray(kanatlar)) G.otoKanatT = kanatlar.slice().sort(function (a, b) { return a - b; }); },
     kare: function (dt, cizme) { adim(+dt || 1 / 60, cizme !== false); return this.bilgi(); }, // değişken kare süresi denemesi (1/30, 1/120…)
     sonInis: function () { return G.sonInis || null; },
     cekBirak: cekBirak,
     kanat: function () { basla(sahte(10, 10)); },
-    yeniden: yeniden,
+    yeniden: function () { yeniden(true); }, // "bir daha": bu bölümde alınmış yıldızlar kalır (5 tamamsa baştan)
+    yenidenSifir: function () { yeniden(false); },
     adim: function (sn) { const n = Math.round(sn * 60); for (let i = 0; i < n; i++) adim(1 / 60, true); return this.bilgi(); }
   };
 

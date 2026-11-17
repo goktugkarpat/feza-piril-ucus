@@ -1,32 +1,33 @@
 # Pırıl'ın Uçuş Okulu – çalışma notları
-Genel kurallar: `../CLAUDE.md`. 25 bölümlük yandan görünüşlü sapan/uçuş oyunu (Three.js r170, `vendor/three.js`; klasik `<script>`, ES module yok).
+Genel kurallar: `../CLAUDE.md`. 40 bölümlük yandan görünüşlü sapan/uçuş oyunu (Three.js r170, `vendor/three.js`; klasik `<script>`, ES module yok).
 
 ## Dosyalar (yükleme sırası)
-`vendor/three.js` → `ses.js` (SES) → `cekirdek.js` (renderer/scene/camera, D, YC, OLAY, P, CEK, yardımcılar) → `bolumler.js` (`window.BOLUMLER`, 25 bölüm; bölüm sayısı hiçbir yerde sabit yazılmaz, hep `BOLUMLER.length`) → `dunya.js` (gök, tepeler, salıncak, mantar, bulut, nilüfer, dere, rüzgâr, halka; `DUNYA`) → `piril.js` (Pırıl ve Bilbo) → `efekt.js` (yol noktaları, yıldızlar, konfeti) → `arayuz.js` (başlık, patikalı bölüm haritası ekranı, sade üst gösterge, yıldız sayacı, canlı kanat hakkı göstergesi, el/kanat ipucu, "bir daha" / "sonraki" / kutlama) → `oyun.js` (durum akışı, çek-bırak, fizik + süzülme destekli kanat çırpma, `window.UCUS`).
-Sayfa: `index.html` (`#sahne` canvas kapsayıcısı, `#arayuz` düğme katmanı), `style.css`. PWA: `manifest.webmanifest`, `sw.js` (önek `feza-piril-ucus-`; yeni dosya/ses eklenince `CORE`/`SESLER`'e ekle ve `CACHE` sürümünü artır), `icons/icon-180/192/512.png`.
+`vendor/three.js` → `ses.js` (SES) → `cekirdek.js` (renderer/scene/camera, D, YC, OLAY, P, CEK) → `bolumler.js` (1–25) → `bolumler_b.js` (26–30) → `bolumler_c.js` (31–35) → `bolumler_d.js` (36–40) (hepsi `window.BOLUMLER`'e ekler; bölüm sayısı hiçbir yerde sabit yazılmaz, hep `BOLUMLER.length`) → `dunya.js` (gök, tepeler, salıncak, yardımcıların görünüşü, 20 eski biyom + eklenti altyapısı `DY_EK`; `DUNYA`) → `ortam_a.js … ortam_e.js` (15 yeni biyom, 21–35: her biri `DY_EK[n] = { palet, secenek, yardimci, yardimciKur, kur(ctx), guncelle(t,dt,ctx), sok(ctx) }`) → `hava.js` (yağmur, kar, şimşek, yaprak…; `HAVA`) → `piril.js` (Pırıl ve Bilbo, kıyafetler) → `efekt.js` (yol noktaları, yıldızlar, zemine göre iniş efektleri, konfeti, final fişekleri) → `arayuz.js` (başlık, kaydırılan 40 bölümlük harita, üst gösterge, ipuçları, kavuşma düğmeleri, madalyalar) → `oyun.js` (durum akışı, çek-bırak, fizik, `window.UCUS`).
+Sayfa: `index.html`, `style.css`. PWA: `manifest.webmanifest`, `sw.js` (önek `feza-piril-ucus-`; yeni dosya/ses eklenince `CORE`/`SESLER`'e ekle ve `CACHE` sürümünü artır), `icons/`. Sesler: `sesler/*.mp3` (50 kayıt; cümleler `ses.js` içindeki `/*SESLER*/` bloğunda, `gen_voice.py` kaydeder).
 
 ## Ortak adlar
 - Durumlar `P.durum`: `bekle | cek | ucus | yuvar | don | kavus`
-- Olaylar (`OLAY.on/emit`): `basla`, `durum`, `bolum(bilgi)`, `cek`, `birak`, `kanat({kalan,toplam,x,y,vx,vy})`, `yildiz({i,x,y,toplam})`, `sek({x,y,tur})` (`yer|mantar|bulut|nilufer|cali`), `ruzgar`, `halka`, `iska`, `kavus({bolumIdx,yildiz,enIyiYildiz})`, `yeniden`, `gucSeviye(n)`, `salla({guc,neden,ust})`, `izKaydet({noktalar})`, `yavas({k})`, `kanatBos({x,y,toplam})` (hak bitmişken dokunuş)
-- `UCUS`: `yeniden()`, `firlat(vx,vy)`, `cekBirak(...)`, `kanat()`, `bolum(idx)`, `bolumSec(no)`, `sonraki()`, `sonrakiBolum()`, `bolumBilgi()`, `otoFirlat()`, `ekran(wx,wy)`, `adim(sn)`, `bilgi()`
-- Arayüz düğmeleri olay yayılmasını durdurur; `oyun.js` `button,a,[data-dugme],.dugme,#baslik` hedeflerini çekme saymaz.
-- `window.ARAYUZ = { basla, baslikAcik }` (`arayuz.js`): başlık açıkken `baslikAcik` true (`piril.js` bunu el sallama için okur).
+- Olaylar (`OLAY.on/emit`): `basla`, `durum`, `bolum({…, biyom, hava, zeminTur, kiyafet, gece, sonBolum, bolumVeri})`, `cek`, `birak`, `kanat`, `kanatBos`, `kanatSira` (erken dokunuş sıraya alındı), `yildiz`, `sek({x,y,tur})`, `ruzgar`, `halka`, `baloncuk({x,y,i})`, `esinti({x,y,i})`, `iska`, `bilboKos({x0,x1,sure,pirilX,engel})`, `kavus({bolumIdx,yildiz,enIyiYildiz,tekAtis,bilboKos,sonBolum})`, `yeniden({birikim,alinan,toplam})`, `simsek({guc})`, `havaDindi`, `silkin({x,y,kim})`, `gucSeviye`, `salla`, `izKaydet`, `yavas`
+- `UCUS`: `yeniden()`, `yenidenSifir()`, `firlat(vx,vy,kanatlar)`, `cekBirak(dx,dy,sonucBekle,kanatSn|dizi)` (gerçek çekiş, piksel), `kanat()`, `bolum(idx)`, `bolumVeri(idx?)`, `bolumBilgi()`, `sonraki()`, `adim(sn)`, `bilgi()` (cizim, ucgen, biyom, hava…), `dene(vx,vy,kanatlar,idx,{dt,x0,y0,deneme,alinan})` (çizmeden, oyunun kendi fiziği), `otoAra(idx)`, `cocukDene(idx,tohum,sec)` / `cocukOzet(idx,n,sec)` (5 yaş taklidi: kaç denemede bütün yıldızlar), `ayar`, `yardimciAyar`.
+- `ARAYUZ`: `basla`, `baslikAcik`, `harita(ac)`, `haritaAcik`.
 
-## Mekanik ve Bölümler (`bolumler.js`, `oyun.js`)
-- 25 bölüm: 1–2 `kanatHak: 0`, 3–7: 1, 8–13: 2, 14–22: 3, 23–25: 4. Her bölümün `biyom` (1–20) alanı görünüşünü seçer; tekrar eden görünüş farklı gün vaktiyle gelir (`dunya.js`).
-- Tasarım ölçütü: her bölümde çocuğun GERÇEK çekişiyle (çekilen yerden fırlatma) tek atışta 5 yıldız + kavuşma mümkün olmalı. Ölçüm: `UCUS.dene(vx, vy, kanatlar, bolumIdx, {dt:1/120})` (oyunun kendi fiziği, çizmeden) ve `UCUS.otoAra(idx)`. Fizik sabit adımlıdır (kare hızından bağımsız).
-- Bölümlerdeki yardımcılar/engeller: `mantarlar`, `bulutlar`, `niluferler` (+ `dere`), `ruzgarlar`, `halkalar`, `cali`, her bölümde 5 `yildizYer`.
-- Süzülme destekli kanat çırpma (`oyun.js`): Havada dokunuşta `G.kanatKalan > 0` ise düşüşü kesip yukarı kaldırma (`A.kanatVy = 7.5`, `A.kanatVx = 1.0`) uygular ve `G.suzT = 0.58` sn süzülme başlatır; süzülme boyunca yerçekimi `YC * 0.55` olur ve yatay hız korunur/artar.
+## Bölüm verisi (`bolumler*.js`)
+`no, ad, altAd, tema, hedef{x,y}, cali, kanatHak, yildizYer[5], cozum{cekis,aci,kanat}` + yardımcılar: `mantarlar, bulutlar, niluferler (+dere), ruzgarlar, halkalar, baloncuklar[{x,y,r}], esintiler[{x,y,w,h,guc}]` + görünüş: `biyom` (1–35), `gece`, `hava` (`yagmur|firtina|gunesliyagmur|kar|karhafif|yaprak|cicek|kum|sis|seker|yildiztozu|isilti`), `zeminTur` (`cim|islak|kar|buz|kum|seker|ay|bulut`), `kiyafet` (`atki|yagmurluk|gunes|uzay|cicektaci|parti|pelerin`). Eksik/bilinmeyen alanlarda hiçbir dosya çökmez.
+- Kanat hakkı: 1–2: 0, 3–7: 1, 8–13: 2, 14–22: 3, 23–25: 4, 26–40: 3–4.
+- Baloncuk: değince hangi yönden gelirse gelsin yukarı-ileri fırlatır (bir uçuşta bir kez). Esinti: içindeyken ileri iter, düşüşü yavaşlatır.
 
-## Arayüz davranışları (`arayuz.js`)
-- Çeken el: ekranın açık bir yerinden geriye-aşağı sürükler (oyun çekişi her yerden alır). İlk çekişe kadar kısa bekleme sonrası; sonra boşta kalınca ya da iki ıska/`salla` sonrası "cok" veya hedefi aşınca "az" biçimiyle; `cek` durumunda kaybolur.
-- Kanat ipucu & gösterge: `kanatHak > 0` olan bölümlerde üstte canlı kanat hakkı (`#kanatlar`); ilk uçuşlarda tepe noktasında kanat+dokunma ipucu, `kanat` olayı görülünce gizlenir.
-- Sayaç ve bölümler: üstte tek ince sıra (harita düğmesi + bölüm no, 5 yıldızlı sayaç, kanat hakları); 25 bölüm ayrı harita ekranında (`ARAYUZ.harita(ac)`, `ARAYUZ.haritaAcik`; `localStorage` ile ilerleme ve en iyi yıldız) (uçuşta küçülür, altına gelinince saydamlaşır, 5'te parlar).
-- Kavuşma: "bir daha" ve sonraki açık bölüme geçiren "sonraki" düğmesi; 5 yıldızda madalya; son bölüm sonunda havai fişekli kutlama, ardından (6 sn sonra) toplam yıldız kartı.
-- Sayfa: `gesture*`, `touchmove`, çoklu dokunuş, çift dokunma, `contextmenu`, `selectstart` engellenir (düğmeler hariç).
+## Feza için bağışlamalar (`oyun.js`) — bozma
+- Kaybetmek yok. Yıldızlar bölüm içinde BİRİKİR: ıskada da "bir daha"da da alınan yıldızlar kalır; çocuk yalnız eksikleri toplar. Beşini tek uçuşta almak ayrı bir başarıdır (`kavus.tekAtis` → gökkuşağı madalya).
+- "Bilbo koşar": Pırıl Bilbo'nun önünde 7 m / arkasında 5 m içinde durursa Bilbo koşup gelir, kavuşma sayılır (arada dere varsa yok).
+- Gizli yardım: bölümdeki deneme sayısı arttıkça yıldız toplama/çekim ve kavuşma alanı büyür. Erken kanat dokunuşu sıraya alınır, yere değdikten 0.2 sn içindeki geç dokunuş da sayılır.
+- Tasarım ölçütü: her bölümde gerçek parmak çekişiyle tek atışta 5 yıldız + kavuşma mümkün; `UCUS.cocukOzet(idx, 40)` ile 5 denemede bütün yıldızlar ≥ %85 hedeflenir. 1–25'in uçuş fiziği (yerçekimi, fırlatma, kanat, sekme) değiştirilmez.
+
+## Görünüş kuralları
+- Ekranda oyunun adı dışında yazı yok (rakam olur). Korkutucu şey ve böcek yok; fırtına yumuşak (uzak şimşek, tatlı gök gürültüsü), kavuşunca güneş açar.
+- Pırıl, yıldızlar ve yardımcılar her ortamda rahat seçilmeli; süsler zıplatan yardımcılara benzememeli; hava parçacıkları yıldız sarısı olmamalı.
+- Bütçe (M1 iPad Pro): bölüm başına ≤ 120 çizim çağrısı, ≤ 340 bin üçgen (`UCUS.bilgi()`); gölge haritası, son işlem yok; bölüm değişince her şey sökülür (`dispose`).
 
 ## Test
-`index.html?sessiz` (her zaman), `&atla` başlığı geçer, `&oto` kendisi fırlatıp kavuşur, `&hiz=N` hızlandırır, `&bolum=N` bölüm seçer, `&hepsiacik` tüm bölümleri açar, `&sw0` service worker'ı kapatır.
-Ekranlar: 1180×820, 1024×768, 820×1180, 768×1024. Düğmeler kenardan ≥5vh içeride (güvenli alan payıyla).
-PWA önbelleği: sürüm `sw.js` içindeki `CACHE` (29 MP3 ses). Düğmelerde yazı yok (yalnız resim/rakam); dikeyde uzun parkurda bekleme kamerası önce tüm parkuru gösterir, sonra salıncağa yaklaşır (`bekleKamera`).
+`index.html?sessiz` (her zaman), `&atla` başlığı geçer, `&oto` kendisi fırlatıp kavuşur, `&hiz=N`, `&bolum=N` (1–40), `&hepsiacik`, `&sw0` service worker'ı kapatır.
+Ekranlar: 1194×834, 834×1194, 1024×768, 768×1024. Düğmeler kenardan ≥5vh içeride.
 Gönderme: yalnız ebeveyn "yükle" deyince `yayinla.command` (depo `goktugkarpat/feza-piril-ucus`, doğrudan main).

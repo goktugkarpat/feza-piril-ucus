@@ -141,15 +141,73 @@ svg{display:block;overflow:visible}
   padding:calc(5vh + env(safe-area-inset-top)) calc(5vh + env(safe-area-inset-right)) calc(5vh + env(safe-area-inset-bottom)) calc(5vh + env(safe-area-inset-left))}
 #ui-harita.gel{animation:ui-kutlama-arka .3s ease-out both}
 #ui-harita.gel .ui-harita-alan{animation:ui-kart-gel .5s cubic-bezier(.22,1.35,.36,1) both}
-.ui-harita-alan{position:absolute;left:calc(5vh + env(safe-area-inset-left) + 8px);right:calc(5vh + env(safe-area-inset-right) + 8px);
-  top:calc(5vh + env(safe-area-inset-top) + 84px);bottom:calc(5vh + env(safe-area-inset-bottom) + 10px)}
-@media (orientation:landscape){.ui-harita-alan{top:calc(5vh + env(safe-area-inset-top) + 56px);right:calc(5vh + env(safe-area-inset-right) + 92px);left:calc(5vh + env(safe-area-inset-left) + 92px)}}
+/* uzun patika: kendi içinde parmakla kayar (yatay ekranda yana, dikeyde aşağı-yukarı) */
+.ui-harita-alan{position:absolute;inset:0;overflow:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.ui-harita-alan::-webkit-scrollbar{display:none}
+#ui-harita.yatay .ui-harita-alan{overflow-x:auto;overflow-y:hidden;touch-action:pan-x}
+#ui-harita.dikey .ui-harita-alan{overflow-x:hidden;overflow-y:auto;touch-action:pan-y;top:calc(5vh + env(safe-area-inset-top) + 86px)}
+.ui-harita-ic{position:relative;min-width:100%;min-height:100%}
 .ui-yol{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+/* ortamlar: her bölümün arkasında yumuşak renk lekesi + yolun iki yanında o ortamın minik resimleri */
+.ui-ortam{position:absolute;inset:0;pointer-events:none;--s:90px}
+.ui-zemin{position:absolute;border-radius:50%;background:radial-gradient(circle closest-side,var(--z) 0%,var(--z) 50%,color-mix(in srgb,var(--z) 60%,transparent) 72%,transparent 100%)}
+.ui-zemin[data-o="kar"],.ui-zemin[data-o="buz"],.ui-zemin[data-o="kis"]{background:radial-gradient(circle closest-side,#fff 0%,#fff 50%,rgba(226,242,255,.8) 72%,transparent 100%)}
+.ui-zemin.gece{filter:saturate(.9) brightness(.92)}
+.ui-zemin.kilit{transform:scale(.62);opacity:.5}
+.ui-harita-alan img,.ui-harita-alan svg{-webkit-user-drag:none}
+.ui-osimge{position:absolute;display:block;width:calc(var(--s) * .56);height:calc(var(--s) * .56);
+  filter:drop-shadow(0 2px 2px rgba(60,30,100,.22));animation:ui-osuz 3.4s ease-in-out infinite;animation-delay:calc(var(--gk,0) * -.68s)}
+.ui-osimge.b{width:calc(var(--s) * .48);height:calc(var(--s) * .48)}
+.ui-osimge svg{width:100%;height:100%}
+@keyframes ui-osuz{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-12%) rotate(5deg)}}
+/* kaydırma okları: iri, kenardan ≥5vh içeride; sonuna gelince söner */
+.ui-harita-ok{position:absolute;z-index:3;width:76px;height:76px;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 34% 24%,#e6d2ff 0%,#a77be8 50%,#7a4cc7 100%);border:5px solid #fff;
+  box-shadow:0 0 0 3px #5d3a9e,0 6px 0 3px rgba(80,40,140,.32),0 10px 20px rgba(107,69,173,.35),inset 0 -4px 8px rgba(60,20,120,.28);
+  transition:opacity .3s,transform .12s cubic-bezier(.3,1.5,.5,1)}
+.ui-harita-ok svg{width:52%;height:52%;filter:drop-shadow(0 2px 0 rgba(60,20,120,.4))}
+.ui-harita-ok.yok{opacity:0;pointer-events:none;transform:scale(.6)}
+#ui-harita.yatay .ui-harita-ok{top:50%;margin-top:-38px}
+#ui-harita.yatay .ui-harita-ok.geri{left:calc(5vh + env(safe-area-inset-left))}
+#ui-harita.yatay .ui-harita-ok.ileri{right:calc(5vh + env(safe-area-inset-right))}
+#ui-harita.yatay .ui-harita-ok.geri svg{transform:scaleX(-1) translateX(5%)}
+#ui-harita.yatay .ui-harita-ok.ileri svg{transform:translateX(5%)}
+#ui-harita.dikey .ui-harita-ok{left:50%;margin-left:-38px}
+#ui-harita.dikey .ui-harita-ok.geri{top:calc(5vh + env(safe-area-inset-top) - 2px)}
+#ui-harita.dikey .ui-harita-ok.ileri{bottom:calc(5vh + env(safe-area-inset-bottom))}
+#ui-harita.dikey .ui-harita-ok.geri svg{transform:rotate(-90deg) translateX(5%)}
+#ui-harita.dikey .ui-harita-ok.ileri svg{transform:rotate(90deg) translateX(5%)}
+.ui-harita-ok.ileri:not(.yok){animation:ui-ok-dur 1.6s ease-in-out infinite}
+#ui-harita.dikey .ui-harita-ok.ileri:not(.yok){animation-name:ui-ok-dur-d}
+@keyframes ui-ok-dur{0%,100%{translate:0 0}50%{translate:6px 0}}
+@keyframes ui-ok-dur-d{0%,100%{translate:0 0}50%{translate:0 6px}}
+.ui-harita-ok:active,.ui-harita-ok.basili{transform:translateY(4px) scale(.92)}
+#ui-harita.gel .ui-harita-ok{animation:ui-pop-gel .45s cubic-bezier(.3,1.5,.5,1) .25s backwards}
+/* bütün bölümler 5 yıldız: Bilbo'nun üstünde parlayan taç */
+.ui-tac{position:absolute;left:24%;top:-44%;width:36%;height:36%;display:none;z-index:2;
+  filter:drop-shadow(0 3px 3px rgba(120,60,10,.35)) drop-shadow(0 0 10px rgba(255,220,90,.95));animation:ui-tac 2.2s ease-in-out infinite}
+.ui-tac::before{content:"";position:absolute;left:50%;top:50%;width:260%;height:260%;margin:-130% 0 0 -130%;border-radius:50%;
+  background:repeating-conic-gradient(rgba(255,220,100,.55) 0 12deg,transparent 12deg 30deg);
+  -webkit-mask:radial-gradient(circle,#000 18%,transparent 66%);mask:radial-gradient(circle,#000 18%,transparent 66%);animation:ui-don 10s linear infinite;z-index:-1}
+.ui-tac svg{position:relative;width:100%;height:100%}
+#ui-harita.hepsi5 .ui-tac{display:block}
+#ui-harita.hepsi5 .ui-bilbo{filter:drop-shadow(0 6px 6px rgba(90,50,30,.28)) drop-shadow(0 0 16px rgba(255,214,90,.85))}
+@keyframes ui-tac{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-10%) rotate(6deg)}}
 .ui-yol path{fill:none;stroke-linecap:round;stroke-linejoin:round}
 .ui-yol .ui-yol-golge{stroke:rgba(90,50,140,.22);stroke-width:calc(var(--yk,34px) + 10px);transform:translateY(5px)}
 .ui-yol .ui-yol-ana{stroke:#fff6e2;stroke-width:var(--yk,34px)}
-.ui-yol .ui-yol-ilerleme{stroke:#ffd76a;stroke-width:calc(var(--yk,34px) - 10px)}
-.ui-yol .ui-yol-cizgi{stroke:rgba(255,255,255,.95);stroke-width:5px;stroke-dasharray:2 16}
+.ui-yol .ui-yol-ilerleme{stroke:#ffc93c;stroke-width:calc(var(--yk,34px) * .2);filter:drop-shadow(0 0 4px rgba(255,200,60,.8))}
+.ui-yol .ui-yp{fill:none;stroke-width:calc(var(--yk,34px) - 6px);stroke-linecap:round}
+.ui-yol .ui-yd{fill:none;stroke-linecap:round;stroke-width:calc(var(--yk,34px) * .22)}
+.ui-yol .ui-yd.kar{stroke:#a9d2f5;stroke-dasharray:.1 15;stroke-width:calc(var(--yk,34px) * .24);transform:translateY(-9px)}
+.ui-yol .ui-yd.kum{stroke:#c9973c;stroke-dasharray:.1 10;stroke-width:6px;transform:translateY(9px)}
+.ui-yol .ui-yd.ay{stroke:#9497b4;stroke-dasharray:.1 24;stroke-width:calc(var(--yk,34px) * .28);transform:translateY(8px)}
+.ui-yol .ui-yd.seker{stroke:#ff8fc8;stroke-dasharray:6 14;stroke-width:calc(var(--yk,34px) - 6px);stroke-linecap:butt;opacity:.45}
+.ui-yol .ui-yd.cicek{stroke:#ff9fc8;stroke-dasharray:.1 19;stroke-width:9px;transform:translateY(-7px)}
+.ui-yol .ui-yd.damla{stroke:#7cc4ea;stroke-dasharray:.1 15;stroke-width:6px;transform:translateY(7px)}
+.ui-yol .ui-yd.yaprak{stroke:#ec8a3c;stroke-dasharray:.1 18;stroke-width:8px;transform:translateY(-6px)}
+.ui-yol .ui-yd.isik{stroke:#8ff7ea;stroke-dasharray:.1 16;stroke-width:8px;filter:drop-shadow(0 0 3px #8ff7ea)}
+.ui-yol .ui-yol-cizgi{stroke:rgba(150,118,200,.42);stroke-width:4px;stroke-dasharray:2 16}
 #bolumler{position:absolute;inset:0;--s:80px}
 .bolum-adim{position:absolute;left:0;top:0;width:var(--s);height:var(--s);border-radius:50%;
   display:grid;place-items:center;font-weight:900;font-size:calc(var(--s) * .42);line-height:1;
@@ -416,7 +474,8 @@ svg{display:block;overflow:visible}
 #kalpler i{display:block;width:min(22px,3vh,3.8vw);height:min(22px,3vh,3.8vw)}
 #kalpler svg{width:100%;height:100%;fill:#ff5e9c;stroke:#fff;stroke-width:7;stroke-linejoin:round;
   filter:drop-shadow(0 2px 3px rgba(170,35,85,.34)) drop-shadow(0 0 6px rgba(255,112,172,.52))}
-#kalpler i.yeni{animation:ui-kalp .86s cubic-bezier(.26,1.72,.48,1) .18s backwards}
+#kalpler i.yeni{animation:ui-kalp .86s cubic-bezier(.26,1.72,.48,1)}
+#kalpler:not(.gizli){animation:ui-pop-gel .35s cubic-bezier(.3,1.5,.5,1)}
 @keyframes ui-kalp{0%{opacity:0;transform:scale(0) rotate(-16deg)}58%{opacity:1;transform:scale(1.58) rotate(8deg);filter:drop-shadow(0 0 11px rgba(255,120,178,.92)) brightness(1.14)}82%{transform:scale(.94) rotate(-3deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
 
 /* ───────── bölüm sonu: "Sonraki Bölüm ▶" + küçük "Bir Daha" ───────── */
@@ -464,12 +523,12 @@ svg{display:block;overflow:visible}
   padding:calc(var(--bolum-top) + var(--bolum-yuk) + 14px) 24px calc(24px + env(safe-area-inset-bottom))}
 #kutlama.gel{animation:ui-kutlama-arka .42s ease-out both}
 #kutlama.gel .kutlama-kart{animation:ui-kart-gel .65s cubic-bezier(.22,1.35,.36,1) .06s backwards}
-#kutlama.gel .kupa{animation:ui-pop-gel .55s cubic-bezier(.3,1.5,.5,1) .14s backwards}
-#kutlama.gel .kutlama-baslik{animation:ui-pop-gel .5s cubic-bezier(.3,1.6,.5,1) .22s backwards}
-#kutlama.gel .kutlama-alt{animation:ui-pop-gel .5s cubic-bezier(.3,1.6,.5,1) .26s backwards}
-#kutlama.gel .kutlama-yildiz{animation:ui-pop-gel .5s cubic-bezier(.3,1.6,.5,1) .3s backwards}
-#kutlama.gel .kutlama-cubuk{animation:ui-pop-gel .5s cubic-bezier(.3,1.6,.5,1) .34s backwards}
-#kutlama.gel .kutlama-dugmeler{animation:ui-pop-gel .5s cubic-bezier(.3,1.6,.5,1) .38s backwards}
+#kutlama.gel .kupa{animation:ui-pop-gel .55s cubic-bezier(.3,1.5,.5,1) .06s backwards}
+#kutlama.gel .kutlama-baslik{animation:ui-pop-gel .5s cubic-bezier(.3,1.6,.5,1) .06s backwards}
+#kutlama.gel .kutlama-alt{animation:ui-pop-gel .5s cubic-bezier(.3,1.6,.5,1) .06s backwards}
+#kutlama.gel .kutlama-yildiz{animation:ui-pop-gel .5s cubic-bezier(.3,1.6,.5,1) .06s backwards}
+#kutlama.gel .kutlama-cubuk{animation:ui-pop-gel .5s cubic-bezier(.3,1.6,.5,1) .06s backwards}
+#kutlama.gel .kutlama-dugmeler{animation:ui-pop-gel .5s cubic-bezier(.3,1.6,.5,1) .06s backwards}
 .kutlama-kart{position:relative;display:flex;flex-direction:column;align-items:center;gap:clamp(10px,1.6vh,14px);
   padding:clamp(22px,3vh,28px) clamp(26px,4vw,40px);border-radius:40px;
   background:linear-gradient(180deg,#fffef9 0%,#fff2d2 56%,#ffe0a0 100%);
@@ -725,7 +784,110 @@ svg{display:block;overflow:visible}
 .ui-harita-btn.kucuk{width:min(84px,11vh,13vw);height:min(84px,11vh,13vw);min-width:72px;min-height:72px;border-width:5px}
 .kutlama-baslik,.kutlama-alt{position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0}
 
+/* ───────── yeni yardımcı ipucu (baloncuk / esinti): yardımcının yanında küçük resimli kart ───────── */
+#ui-yardim{position:fixed;left:0;top:0;width:min(124px,15vh,17vw);height:min(124px,15vh,17vw);pointer-events:none;z-index:4;--kx:50%;
+  border-radius:34px;background:radial-gradient(circle at 50% 40%,rgba(255,255,250,.97),rgba(232,244,255,.92));border:4.5px solid #fff;
+  box-shadow:0 0 0 3.5px #5cb8ec,0 8px 22px rgba(40,110,170,.32),0 0 26px rgba(170,225,255,.75),inset 0 2px 0 #fff;
+  opacity:0;transform:scale(.7);transition:opacity .3s ease-out,transform .4s cubic-bezier(.28,1.55,.48,1)}
+#ui-yardim.goster{opacity:.97;transform:scale(1)}
+#ui-yardim::before{content:"";position:absolute;left:var(--kx);bottom:-18px;margin-left:-13px;border:13px solid transparent;border-bottom:0;border-top:17px solid #5cb8ec}
+#ui-yardim.uzak::before{display:none}
+#ui-yardim.alt::before{bottom:auto;top:-18px;border-top:0;border-bottom:17px solid #5cb8ec}
+#ui-yardim svg{position:absolute;inset:4%;width:92%;height:92%;overflow:hidden;border-radius:28px}
+#ui-yardim .ui-ye,#ui-yardim.esinti .ui-yb{display:none}
+#ui-yardim.esinti .ui-ye{display:block}
+#ui-yardim:not(.oyna) *{animation:none!important}
+#ui-yardim .yb-balon{transform-origin:106px 108px;animation:ui-yb-balon 2.6s ease-in-out infinite}
+#ui-yardim .yb-pit{transform-origin:106px 108px;animation:ui-yb-pit 2.6s ease-out infinite}
+#ui-yardim .yb-iz{animation:ui-yb-iz 2.6s linear infinite}
+#ui-yardim .yb-ok{animation:ui-yb-iz 2.6s linear infinite}
+#ui-yardim .yb-piril{animation:ui-yb-piril 2.6s ease-in-out infinite}
+@keyframes ui-yb-piril{0%{transform:translate(-4px,114px) scale(.9);opacity:0}10%{opacity:1}
+  34%{transform:translate(36px,110px) rotate(8deg) scale(1)}40%{transform:translate(40px,112px) scale(1.08,.88)}
+  76%{transform:translate(118px,40px) rotate(-14deg) scale(1);opacity:1}88%,100%{transform:translate(130px,26px) rotate(-14deg) scale(.9);opacity:0}}
+@keyframes ui-yb-balon{0%,34%{transform:scale(1);opacity:1}40%{transform:scale(.88,1.1);opacity:1}46%{transform:scale(1.35);opacity:0}86%{transform:scale(.3);opacity:0}96%,100%{transform:scale(1);opacity:1}}
+@keyframes ui-yb-pit{0%,40%{transform:scale(.5);opacity:0}44%{opacity:1}58%,100%{transform:scale(1.25);opacity:0}}
+@keyframes ui-yb-iz{0%,40%{opacity:0}48%,80%{opacity:1}92%,100%{opacity:0}}
+#ui-yardim .ye-ruzgar path{stroke-dasharray:46 22;animation:ui-ye-ruzgar .9s linear infinite}
+#ui-yardim .ye-ruzgar path:nth-child(2){animation-duration:.75s}
+#ui-yardim .ye-piril{animation:ui-ye-piril 2.4s cubic-bezier(.55,0,.75,.55) infinite}
+#ui-yardim .ye-cizgi{animation:ui-yb-iz 2.4s linear infinite}
+@keyframes ui-ye-ruzgar{to{stroke-dashoffset:-68}}
+@keyframes ui-ye-piril{0%{transform:translate(4px,92px) scale(.9);opacity:0}12%{transform:translate(26px,92px) scale(1);opacity:1}
+  82%{transform:translate(150px,84px) rotate(-8deg) scale(1);opacity:1}92%,100%{transform:translate(176px,82px) rotate(-8deg);opacity:0}}
+.ui-harita-acik #ui-yardim{opacity:0!important}
+
+/* ───────── başlıkta mevsimler arasında süzülen yumuşak süsler (kar, çiçek, yaprak, damla…) ───────── */
+.ui-mevsim{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+#baslik .baslik-ust,#baslik .ui-baslik-dugmeler{z-index:1}
+.ui-mevsim i{position:absolute;top:-70px;left:calc(4% + var(--k) * 10%);width:clamp(30px,4.6vh,48px);height:clamp(30px,4.6vh,48px);opacity:0;
+  animation:ui-mevsim-dus 19s linear infinite;animation-delay:calc(var(--k) * -1.9s - 1s)}
+.ui-mevsim i:nth-child(even){animation-duration:23s;width:clamp(24px,3.6vh,38px);height:clamp(24px,3.6vh,38px)}
+.ui-mevsim i:nth-child(3n){left:calc(var(--k) * 10% - 2%)}
+.ui-mevsim b{display:block;width:100%;height:100%;animation:ui-mevsim-sal 3.6s ease-in-out infinite alternate;filter:drop-shadow(0 3px 4px rgba(90,50,120,.2))}
+.ui-mevsim svg{width:100%;height:100%}
+@keyframes ui-mevsim-dus{0%{transform:translateY(0) rotate(0);opacity:0}8%{opacity:.85}88%{opacity:.85}100%{transform:translateY(calc(100vh + 140px)) rotate(240deg);opacity:0}}
+@keyframes ui-mevsim-sal{from{transform:translateX(-18px)}to{transform:translateX(18px)}}
+
+/* üst gösterge her ortamda okunsun: beyaz karda, koyu gecede, parlak çölde ince koyu dış çizgi */
+#ui-harita-ac{box-shadow:0 0 0 2.5px rgba(122,76,199,.8),0 0 0 4.5px rgba(40,20,80,.16),0 6px 0 rgba(90,50,160,.22),0 10px 22px rgba(40,20,80,.26),inset 0 2px 0 #fff}
+#sayac{box-shadow:0 0 0 2.5px rgba(224,150,20,.7),0 0 0 4.5px rgba(70,40,10,.14),0 6px 0 rgba(170,100,10,.16),0 10px 22px rgba(60,35,10,.24),inset 0 2px 0 rgba(255,255,255,.95)}
+#kanatlar{box-shadow:0 0 0 2.5px rgba(122,76,199,.85),0 0 0 4.5px rgba(40,20,80,.16),0 6px 0 rgba(90,50,160,.2),0 10px 22px rgba(40,20,80,.26),inset 0 2px 0 #fff}
+#sayac i .bos{fill:rgba(210,188,150,.75);stroke:rgba(160,132,90,.85)}
+#ui-harita-ac b{min-width:1.25em;letter-spacing:-.04em}
+/* dikey ekranda 4 kanat + 5 yıldız + iki haneli bölüm no yan yana sığsın (768 px genişlikte bile arada boşluk kalsın) */
+@media (orientation:portrait){
+  #sayac{padding:0 12px;gap:min(6px,.8vw)}
+  #kanatlar{gap:3px;padding:0 9px}
+  #kanatlar i{width:min(44px,4.6vw);height:min(44px,4.6vw)}
+}
+
+/* ───────── 2. tur: birikmiş yıldızlar, eksik yıldız daveti, gökkuşağı madalya ───────── */
+#sonrakiKutu .ui-tekrar-kutu{order:-1;position:relative;display:flex;flex-direction:column;align-items:center}
+#ui-eksik{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);display:flex;gap:3px;pointer-events:none;white-space:nowrap;
+  padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.62);box-shadow:0 0 0 2px rgba(154,114,214,.35),0 3px 8px rgba(70,30,120,.18)}
+#ui-eksik:empty{display:none}
+#ui-eksik i{display:block;width:min(30px,4vh,5vw);height:min(30px,4vh,5vw);animation:ui-eksik 1.8s ease-in-out infinite;animation-delay:calc(var(--ek,0) * .18s)}
+#ui-eksik svg{width:100%;height:100%;fill:rgba(255,236,170,.7);stroke:#9a72d6;stroke-width:8;stroke-linejoin:round;stroke-dasharray:14 7;
+  filter:drop-shadow(0 1px 2px rgba(70,30,120,.35))}
+@keyframes ui-eksik{0%,100%{transform:scale(.9) rotate(-6deg);opacity:.7}50%{transform:scale(1.08) rotate(6deg);opacity:1}}
+#sonrakiKutu.gel #ui-eksik{animation:ui-eksik-gel .45s cubic-bezier(.3,1.5,.5,1) .3s backwards}
+@keyframes ui-eksik-gel{from{transform:translateX(-50%) scale(.3);opacity:0}to{transform:translateX(-50%) scale(1);opacity:1}}
+/* eksik varsa "bir daha" hafifçe parlar ve kıpırdar: "kalan yıldızları da topla" */
+#sonrakiKutu.eksikli .kucuk-tekrar{box-shadow:0 0 0 3px #9a72d6,0 0 0 7px rgba(255,214,90,.55),0 6px 0 2px rgba(110,70,180,.3),0 0 22px rgba(255,214,90,.7)}
+#sonrakiKutu.eksikli.gel .kucuk-tekrar{animation:ui-tekrar-gel .48s cubic-bezier(.26,1.42,.42,1) .1s backwards,ui-tekrar-davet 2.4s ease-in-out 1.2s infinite}
+@keyframes ui-tekrar-davet{0%,70%,100%{transform:rotate(0)}76%{transform:rotate(-14deg) scale(1.06)}84%{transform:rotate(10deg) scale(1.06)}92%{transform:rotate(-4deg)}}
+/* tek uçuşta 5 yıldız: gökkuşağı madalya + ışıltı */
+#rozet.gk .rz-dis{fill:url(#uiRozetGk);stroke:#a77be8}
+#rozet.gk .rz-ic{fill:#fffbe8;opacity:.9}
+#rozet.gk .isin{background:repeating-conic-gradient(#ff8fb0 0 10deg,transparent 10deg 20deg,#ffd34d 20deg 30deg,transparent 30deg 40deg,#7fe08a 40deg 50deg,transparent 50deg 60deg,#7fcaf5 60deg 70deg,transparent 70deg 80deg,#c6a2f5 80deg 90deg,transparent 90deg 100deg)}
+#rozet.gk::before{background:radial-gradient(circle,rgba(255,240,180,.7) 0%,rgba(200,170,255,.35) 46%,transparent 72%)}
+.ui-gk-isilti{position:absolute;inset:-20%;pointer-events:none;display:none}
+#rozet.gk .ui-gk-isilti{display:block}
+.ui-gk-isilti i{position:absolute;width:20px;height:20px;opacity:0;
+  background:radial-gradient(circle,#fff 0 30%,#ffe066 60%,transparent 74%);clip-path:polygon(50% 0%,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0% 50%,38% 38%);
+  animation:ui-yildizcik 1.4s ease-in-out infinite}
+.ui-gk-isilti i:nth-child(1){left:6%;top:10%}.ui-gk-isilti i:nth-child(2){right:4%;top:18%;animation-delay:.25s}
+.ui-gk-isilti i:nth-child(3){left:0;top:58%;animation-delay:.5s}.ui-gk-isilti i:nth-child(4){right:2%;top:64%;animation-delay:.75s}
+.ui-gk-isilti i:nth-child(5){left:44%;top:-4%;animation-delay:1s}.ui-gk-isilti i:nth-child(6){left:40%;bottom:0;animation-delay:.6s}
+/* haritada: o bölüm tek uçuşta 5 yıldızla bitti → yıldızların yanında minik gökkuşağı */
+.bolum-adim .ui-tek{position:absolute;left:calc(100% - var(--s) * .12);top:calc(100% - var(--s) * .2);width:calc(var(--s) * .34);height:calc(var(--s) * .34);
+  pointer-events:none;z-index:3;filter:drop-shadow(0 1px 1px rgba(60,30,100,.35)) drop-shadow(0 0 4px rgba(255,255,255,.9))}
+.bolum-adim .ui-tek svg{width:100%;height:100%}
+/* hepsi tek uçuşta: taç gökkuşağı renkli */
+#ui-harita.hepsitek .ui-tac .tac-govde{fill:url(#uiTacGk)}
+#ui-harita.dikey .ui-tac{left:-30%;top:-4%}
+#ui-harita.hepsitek .ui-tac::before{background:repeating-conic-gradient(rgba(255,140,180,.55) 0 10deg,transparent 10deg 20deg,rgba(130,220,140,.55) 20deg 30deg,transparent 30deg 40deg,rgba(130,200,250,.55) 40deg 50deg,transparent 50deg 60deg)}
+
 @media (prefers-reduced-motion:reduce){
+  .ui-mevsim b,.ui-osimge{animation:none!important}
   .buyuk,#sonraki,#bastan,.bolum-adim .ui-piril,.bolum-adim .ui-kupa,#baslik .ui-harita-btn,.konfeti i,.kupa::before,.kupa svg,#rozet .isin,.kutlama-kart::after{animation:none!important}
   .buyuk::after,#sonraki::after{display:none}
 }
+
+/* final kartı: ana düğme haritaya dönüş (iri, nabızlı); "baştan 1" küçük ve sakin */
+.kutlama-dugmeler #ui-kutlama-harita{order:1;width:min(120px,15vh,19vw);height:min(120px,15vh,19vw);min-width:96px;min-height:96px;animation:ui-nabiz 1.65s ease-in-out infinite}
+.kutlama-dugmeler #bastan{order:2;width:min(84px,11vh,13vw);height:min(84px,11vh,13vw);min-width:72px;min-height:72px;animation:none;border-width:5px}
+.kutlama-dugmeler #bastan::after{display:none}
+.kutlama-dugmeler #bastan span{font-size:min(26px,3.6vh,4.4vw)}
+.kutlama-dugmeler #kutlamaTekrar{order:0}

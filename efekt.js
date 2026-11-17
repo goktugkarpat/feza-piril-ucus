@@ -68,10 +68,17 @@
     ' else if(vK<10.5){ a=0.55*smoothstep(0.5,0.12,r)+0.45*smoothstep(0.16,0.08,r);',  // 10 karahindiba tüyü (yumuşak top)
     '   col=mix(col,vec3(1.0),smoothstep(0.3,0.0,length(c-vec2(-0.1,0.1)))); }',
     ' else if(vK<11.5){ a=exp(-abs(d.y)*34.0)*smoothstep(0.5,0.0,abs(d.x))*(0.35+d.x); }', // 11 hız çizgisi
-    ' else { vec2 p=vec2(d.x,abs(d.y)); vec2 n=vec2(0.504,0.864);',          // 12 tombul ok ucu (yuvarlak köşeli üçgen)
+    ' else if(vK<12.5){ vec2 p=vec2(d.x,abs(d.y)); vec2 n=vec2(0.504,0.864);',          // 12 tombul ok ucu (yuvarlak köşeli üçgen)
     '   float sd=max(max(dot(vec2(p.x-0.27,p.y),n), -dot(vec2(p.x-0.03,p.y),n)), p.y-0.3)-0.055;',   // "›" biçimi: yönü belli olsun
     '   a=smoothstep(0.015,-0.015,sd); col=mix(col,vec3(0.52,0.34,0.88),smoothstep(-0.06,-0.035,sd));',
     '   col=mix(col,vec3(1.0),0.52*smoothstep(0.13,0.0,length(p-vec2(-0.04,0.0)))); }',
+    ' else if(vK<13.5){ float an=atan(d.y,d.x); float sk=mod(an+0.5236,1.0472)-0.5236; vec2 q=r*vec2(cos(sk),sin(sk));', // 13 kar tanesi (6 kollu)
+    '   float kol=smoothstep(0.08,0.04,abs(q.y))*smoothstep(0.48,0.40,q.x);',
+    '   vec2 q2=vec2(q.x-0.25,abs(q.y)); float dal=smoothstep(0.06,0.03,abs(q2.y-q2.x))*step(0.0,q2.x)*smoothstep(0.16,0.11,q2.x);',
+    '   a=max(max(kol,dal),smoothstep(0.13,0.08,r)); col=mix(col,vec3(1.0),0.45*smoothstep(0.3,0.0,r)); }',
+    ' else { a=smoothstep(0.5,0.40,r); float st=step(0.5,fract((d.x+d.y)*2.4));',               // 14 şeker (çizgili yuvarlak)
+    '   col=mix(col,vec3(1.0),0.78*st*smoothstep(0.40,0.30,r)); col=mix(col*0.78,col,smoothstep(0.5,0.32,r));',
+    '   col=mix(col,vec3(1.0),0.5*smoothstep(0.14,0.0,length(c-vec2(-0.13,0.13)))); }',
     ' a*=vA; if(a<0.01) discard;',
     ' gl_FragColor=vec4(col,min(a,1.0)); }'
   ].join('\n');
@@ -176,7 +183,8 @@
     var kk = (kademeG - 1) / 2;                       // 0 hafif, 0,5 orta, 1 tam
     var tam = kd === 3 ? 1 : 0;
     var nabiz = tam ? 0.5 + 0.5 * Math.sin(t * 10.0) : 0;
-    var cR = 1.0, cG = 0.94 - 0.08 * kk, cB = 0.62 - 0.24 * kk;    // her kademede parlak krem-altın; tam güçte daha sıcak altın
+    var cR = 1.0, cG = 0.94 - 0.08 * kk, cB = 0.62 - 0.24 * kk;
+    if (yildizSicak) { cG -= 0.2; cB -= 0.42; }        // açık/sarı zeminde daha doygun turuncu-altın, beyazda kaybolmasın    // her kademede parlak krem-altın; tam güçte daha sıcak altın
     var ph = (t * 2.2) % 1;
     var vh = Math.sqrt(yolVx * yolVx + yolVy * yolVy) || 1;
     // çekiş oku: Pırıl'ın önünden fırlama yönüne; ok ucu sayısı = güç kademesi (1, 2, 3)
@@ -231,7 +239,7 @@
       var yerde = s > sInis + 0.02 ? 0 : Math.min(1, (sInis + 0.02 - s) / 0.05);
       var boyEgri = (0.78 + 1.24 * u * (1 - u) - 0.16 * u) * (1 - 0.28 * ucE); // uçta (u>0.85) ~0.72'ye incelerek iniş merkezine bağlanır
       var hedefPay = u * u * hyak;                             // hedefe yakınsa yolun sonu altın-yeşile çalar
-      YOL.boy[k] = (0.50 + 0.16 * gu + 0.12 * kk) * boyEgri * (0.94 + 0.14 * akis + 0.12 * nabiz + 0.24 * kademePop) * kf;
+      YOL.boy[k] = (0.50 + 0.16 * gu + 0.12 * kk) * boyEgri * (0.94 + 0.14 * akis + 0.12 * nabiz + 0.24 * kademePop) * kf * (geceMod ? 1.3 : (yildizSicak ? 1.18 : 1));
       YOL.alfa[k] = yolGorunur * (0.86 + 0.10 * kk) * bas * son * yerde;
       YOL.renk[k3] = cR - 0.34 * hedefPay;
       YOL.renk[k3 + 1] = Math.min(1, cG + 0.06 * akis + 0.06 * nabiz + 0.08 * hedefPay);
@@ -356,6 +364,7 @@
   var yYak = new Float32Array(YN);     // Pırıl'a yakınlık (0..1, yumuşak)
   var uAkt = new Float32Array(YN), uSx = new Float32Array(YN), uSy = new Float32Array(YN), uT = new Float32Array(YN), uIzTimer = new Float32Array(YN);
   var yIsiltiSay = 0;
+  var yPop = new Float32Array(YN), uBes = new Uint8Array(YN);   // toplanınca "çıt" büyüme anı; 5. yıldızın sayaca uçuşu
 
   function yildizGeo() {
     var sh = new THREE.Shape(), dis = 0.78, ic = 0.44;
@@ -429,11 +438,16 @@
     yYolPirT += dt;
     var yolPir = yYolPirT > 0.16; if (yolPir) yYolPirT = 0;
     for (var i = 0; i < YN; i++) {
-      var hedefO = yDurum[i];
+      var hedefO = durum() === 'kavus' ? 0 : yDurum[i];   // kutlamada alınmamış yıldızlar küçülüp çekilir ("bir daha"da geri gelir)
       if (hedefO > 0 && yGecik[i] > 0) { yGecik[i] -= dt; hedefO = 0; }
       if (hedefO > yOlcek[i]) yOlcek[i] = Math.min(1.12, yOlcek[i] + dt * 2.6);
       else yOlcek[i] = Math.max(hedefO, yOlcek[i] - dt * 7.0);
       if (hedefO >= 1 && yOlcek[i] > 1) yOlcek[i] = Math.max(1, yOlcek[i] - dt * 0.4);
+      if (yPop[i] > 0) {                // çıt: 0,07 sn'de kabarır, sonra hızla söner
+        yPop[i] = Math.max(0, yPop[i] - dt);
+        var pf = 1 - yPop[i] / 0.22;
+        yOlcek[i] = pf < 0.32 ? 1.05 + 0.6 * (pf / 0.32) : 1.65 * (1 - (pf - 0.32) / 0.68);
+      }
       // Pırıl yaklaşınca yıldız ona doğru hafifçe uzanır ve parlar
       var dxp = 0, dyp = 0, yak = 0;
       if (uc && yDurum[i] > 0) {
@@ -473,6 +487,17 @@
       var par = 0.5 + 0.5 * Math.sin(t * 6.4 + i * 2.7);
       ADD.boy[40 + i] = (2.9 + 0.72 * nab + 0.28 * par + 1.35 * yk + 0.8 * sira + yo * (1.6 + 0.9 * yolNab) * yolKf) * Math.max(0.001, yOlcek[i]) * (0.65 + 0.35 * ust);
       ADD.alfa[40 + i] = yOlcek[i] > 0.02 ? Math.min(0.95, (0.38 + 0.18 * nab + 0.08 * par + 0.34 * yk + 0.12 * sira + 0.34 * yo) * Math.min(1, yOlcek[i]) * ust) : 0;
+      if (geceMod && yOlcek[i] > 0.02) {   // gece: belirgin, yumuşak, sıcak hâle + hafif nabız
+        var gn = 0.5 + 0.5 * Math.sin(t * 3.0 + i * 1.1);
+        ADD.boy[40 + i] *= 1.3 + 0.12 * gn;
+        ADD.alfa[40 + i] = Math.min(0.95, ADD.alfa[40 + i] * 1.25 + 0.12 * gn);
+        ADD.renk[h3] = 1.0; ADD.renk[h3 + 1] = 0.78 + 0.08 * gn; ADD.renk[h3 + 2] = 0.32;
+      } else { ADD.renk[h3] = 1.0; ADD.renk[h3 + 1] = 0.9; ADD.renk[h3 + 2] = 0.45; }
+      var nh = SN + i, nh3 = nh * 3;     // parlak zeminde: toplanan ışık yerine sıcak amber hâle (normal karışım; beyazda görünür)
+      NOR.poz[nh3] = bx; NOR.poz[nh3 + 1] = by; NOR.poz[nh3 + 2] = -0.3;
+      NOR.boy[nh] = ADD.boy[40 + i] * 0.6;
+      NOR.alfa[nh] = yildizSicak ? Math.min(0.8, ADD.alfa[40 + i] * 1.15) : 0;
+      if (yildizSicak) ADD.alfa[40 + i] *= 0.25;   // toplanan beyaz ışık amber hâleyi soldurmasın
       if (yOlcek[i] > 0.5) bekleyen = true;
       // uçan sayaç yıldızı
       var j = YN + i;
@@ -484,6 +509,16 @@
           yay(ADD, _v3b.x, _v3b.y, 0.65, 0, 0, 0, 0.40, 1.25, 2.15, 1, 0.93, 0.48, 0, 0, 0, 0.68);
           patlat(_v3b.x, _v3b.y, 8, 3.6, 0.46, 1, 0.93, 0.5, 1);
           halka(_v3b.x, _v3b.y, 0.28, 1.75, 0.40, 1, 0.94, 0.52);
+          if (uBes[i]) {                // 5. yıldız sayaca oturunca: gökkuşağı pırıltısı ve ikinci halka
+            uBes[i] = 0;
+            for (var gq = 0; gq < 12; gq++) {
+              var gcq = GOKKUSAGI[gq % 6], agq = (gq / 12) * 6.283;
+              var igq = yay(ADD, _v3b.x, _v3b.y, 0.7, Math.cos(agq) * 4.2, Math.sin(agq) * 4.2, 0, 0.6, 0.42, 0.05,
+                0.5 + 0.5 * gcq[0], 0.5 + 0.5 * gcq[1], 0.5 + 0.5 * gcq[2], 1, 1.5, 2.4, 0.95);
+              ADD.donh[igq] = 3.5;
+            }
+            halka(_v3b.x, _v3b.y, 0.3, 2.6, 0.55, 1, 0.74, 0.86, 0.08);
+          }
           _s3.set(0, 0, 0); _m4.compose(_v3b, _q, _s3);
         } else {
           sayacYeri(_v3b, i);
@@ -602,7 +637,8 @@
         if (sec < 0.36) { tr = 1.0; tg = 0.88; tb = 0.42; }        // sıcak altın
         else if (sec < 0.70) { tr = 1.0; tg = 0.54; tb = 0.82; }   // gül pembe
         else { tr = 0.72; tg = 0.52; tb = 1.0; }                   // yumuşak mor
-        yay(ADD, P.x - vx * 0.03 + (Math.random() - 0.5) * 0.48, P.y - vy * 0.03 + (Math.random() - 0.5) * 0.48, -0.18,
+        if (izParlak) { tg = tg * 0.62; tb = tb * 0.55 + (sec >= 0.70 ? 0.4 : 0); }   // parlak zeminde koyu-sıcak toz (normal karışım)
+        yay(izParlak ? NOR : ADD,P.x - vx * 0.03 + (Math.random() - 0.5) * 0.48, P.y - vy * 0.03 + (Math.random() - 0.5) * 0.48, -0.18,
           -vx * 0.06 + (Math.random() - 0.5) * 0.55, -vy * 0.06 + (Math.random() - 0.3) * 0.55, 0,
           0.52 + Math.random() * 0.38, 0.24 + 0.08 * cosku, 0.04, tr, tg, tb, 0, 0.5, 1.15, 0.92);
       }
@@ -615,10 +651,46 @@
         if (pSec < 0.4) { pr = 1.0; pg = 0.9; pb = 0.5; }
         else if (pSec < 0.72) { pr = 1.0; pg = 0.62; pb = 0.86; }
         else { pr = 0.76; pg = 0.58; pb = 1.0; }
-        var p = yay(ADD, P.x - vx * 0.04 + (Math.random() - 0.5) * 0.72, P.y - vy * 0.04 + (Math.random() - 0.5) * 0.72, -0.08,
+        if (izParlak) { pg = pg * 0.6; pb = pb * 0.5 + (pSec >= 0.72 ? 0.45 : 0); }
+        var PH = izParlak ? NOR : ADD;
+        var p = yay(PH, P.x - vx * 0.04 + (Math.random() - 0.5) * 0.72, P.y - vy * 0.04 + (Math.random() - 0.5) * 0.72, -0.08,
           -vx * 0.03, 0.18 + (Math.random() - 0.5) * 0.25, 0, 0.78, 0.48 + 0.14 * cosku, 0.06, pr, pg, pb, 1, 0, 0.3, 0.96);
-        ADD.donh[p] = (Math.random() - 0.5) * 3.5;
+        PH.donh[p] = (Math.random() - 0.5) * 3.5;
       }
+      // yağmurlu havada izden minik damlalar süzülür
+      if (izYagmur) {
+        izDamSay += dt;
+        while (izDamSay > 0.075) {
+          izDamSay -= 0.075;
+          yay(NOR, P.x - vx * 0.05 + (Math.random() - 0.5) * 0.6, P.y - 0.2 + (Math.random() - 0.5) * 0.5, 0.1,
+            -vx * 0.08 + (Math.random() - 0.5) * 0.4, -0.5, 0, 0.62, 0.17 + Math.random() * 0.06, 0.12,
+            0.56, 0.82, 1.0, 7, 10, 0.4, 0.9);
+        }
+      }
+      // baloncuk sonrası: Pırıl'ın altından aşağı akan pırıltılar ve "yukarı" oklar (fırladığını hissettirir)
+      if (balIzSure > 0) {
+        balIzSure -= dt;
+        balIzSay += dt;
+        while (balIzSay > 0.04) {
+          balIzSay -= 0.04;
+          var bc = GOKKUSAGI[(Math.random() * 6) | 0];
+          var bp = yay(ADD, P.x + (Math.random() - 0.5) * 0.7, P.y - 0.6 - Math.random() * 0.3, 0.2,
+            (Math.random() - 0.5) * 0.5, -2.2 - Math.random() * 1.2, 0, 0.5, 0.3, 0.05,
+            0.6 + 0.4 * bc[0], 0.6 + 0.4 * bc[1], 0.6 + 0.4 * bc[2], 1, 0, 1.5, 0.9);
+          ADD.donh[bp] = 4;
+        }
+      }
+      // esinti içindeyken: Pırıl'ın arkasında yatay hız çizgileri
+      if (esintiIcinde()) {
+        esSay += dt;
+        while (esSay > 0.05) {
+          esSay -= 0.05;
+          var ey = (Math.random() - 0.5) * 1.5;
+          var ec = yay(izParlak ? NOR : ADD, P.x - 1.0 - Math.random() * 0.6, P.y + ey, 0.3, -4.5, 0, 0,
+            0.34, 1.3 + Math.random() * 0.5, 0.9, izParlak ? 0.55 : 0.9, izParlak ? 0.75 : 0.98, 1.0, 11, 0, 2, izParlak ? 0.75 : 0.55);
+          (izParlak ? NOR : ADD).don[ec] = 0; (izParlak ? NOR : ADD).donh[ec] = 0;
+        }
+      } else esSay = 0;
       // kanat çırpma sonrası 0.55s süzülme boyunca uçuş izinde ekstra parlak ışıltı akışı
       if (kanatF > 0) {
         kanatPirSay += dt;
@@ -731,16 +803,20 @@
     g.setAttribute('yan', new THREE.BufferAttribute(yan, 1));
     g.setIndex(idx); g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e5);
     var m = new THREE.ShaderMaterial({
-      uniforms: { uT: { value: 0 } },
+      // uKenar: parlak zeminde (kar, kum, bulut) koyu kenarlı ve sıcak renkli; uGece: gecede daha parlak
+      uniforms: { uT: { value: 0 }, uKenar: { value: 0 }, uGece: { value: 0 }, uKR: { value: new THREE.Vector3(0.42, 0.14, 0.32) } },
       vertexShader: 'attribute float al; attribute float ton; attribute float yan; varying float vA; varying float vT; varying float vY;' +
         'void main(){ vA=al; vT=ton; vY=yan; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-      fragmentShader: 'uniform float uT; varying float vA; varying float vT; varying float vY;' +
-        'void main(){ float e=1.0-abs(vY*2.0-1.0); e=e*e*(3.0-2.0*e);' +
+      fragmentShader: 'uniform float uT; uniform float uKenar; uniform float uGece; uniform vec3 uKR; varying float vA; varying float vT; varying float vY;' +
+        'void main(){ float e0=1.0-abs(vY*2.0-1.0); float e=e0*e0*(3.0-2.0*e0);' +
         ' float u=clamp(vT,0.0,1.0);' +
         ' float dalga=0.5+0.5*sin(u*18.0-uT*11.0);' +
         ' vec3 col=mix(mix(vec3(1.0,0.88,0.42),vec3(1.0,0.52,0.80),smoothstep(0.0,0.48,u)),vec3(0.66,0.48,1.0),smoothstep(0.42,1.0,u));' +
-        ' col=mix(col,vec3(1.0),(0.48+0.34*smoothstep(0.22,0.0,u)+0.12*dalga)*smoothstep(0.65,1.0,e)*(1.0-u));' +
-        ' float a=vA*e*(0.86+0.12*dalga); if(a<0.01) discard; gl_FragColor=vec4(col,min(a,1.0)); }',
+        ' vec3 sic=mix(mix(vec3(1.0,0.60,0.10),vec3(0.95,0.28,0.58),smoothstep(0.0,0.48,u)),vec3(0.50,0.28,0.92),smoothstep(0.42,1.0,u));' +
+        ' col=mix(col,sic,uKenar);' +
+        ' col=mix(col,vec3(1.0),(0.48+0.34*smoothstep(0.22,0.0,u)+0.12*dalga)*smoothstep(0.65,1.0,e)*(1.0-u)*(1.0-0.8*uKenar+0.2*uGece));' +
+        ' float kb=uKenar*(1.0-smoothstep(0.24,0.50,e0)); col=mix(col,uKR,kb*0.95);' +
+        ' float a=vA*mix(e,smoothstep(0.0,0.12,e0),uKenar)*(0.86+0.12*dalga)*(1.0+0.15*uGece+0.8*uKenar); if(a<0.01) discard; gl_FragColor=vec4(col,min(a,1.0)); }',
       transparent: true, depthWrite: false, blending: THREE.NormalBlending, side: THREE.DoubleSide
     });
     izMesh = new THREE.Mesh(g, m); izMesh.frustumCulled = false;
@@ -869,6 +945,7 @@
     }
     atesTemala(geceMod, aktifTema);
     for (i = 40; i < 45; i++) { var h3 = i * 3; ADD.renk[h3] = 1.0; ADD.renk[h3 + 1] = 0.9; ADD.renk[h3 + 2] = 0.45; ADD.tur[i] = 0; }
+    for (i = 45; i < 49; i++) { var b3 = i * 3; ADD.renk[b3] = 0.75; ADD.renk[b3 + 1] = 0.95; ADD.renk[b3 + 2] = 1.0; ADD.tur[i] = 0; ADD.alfa[i] = 0; }
   }
   function atesGuncelle(t) {
     var canliMod = (fParlak === 1 || fParlak === 2);
@@ -956,6 +1033,7 @@
         bhGec[bhSay] = 0; bhSay++;
       }
     }
+    ortamAyarla();
   }
   function ruzgarGuncelle(dt, t) {
     if (ruzSay <= 0) return;
@@ -971,10 +1049,11 @@
         var vx = Math.sin(t * 2.3 + px * 0.65 + py * 0.22) * 0.75;
         // yukarı süzülen ışıltılı rüzgâr çizgisi (ADD, tur=11 akış yönüne eğimli)
         var ton = Math.random();
-        var ii = yay(ADD, px, py, 0.25, vx, vy, 0,
+        var RH = izParlak ? NOR : ADD;   // beyaz/parlak zeminde ışık karışımı görünmez: koyu mavi çizgi
+        var ii = yay(RH, px, py, 0.25, vx, vy, 0,
           0.84 + Math.random() * 0.36, 0.78 + Math.random() * 0.22, 0.36,
-          0.72 + ton * 0.14, 0.96 + ton * 0.04, 1.0, 11, -1.65, 0.42, 0.48 + Math.random() * 0.12);
-        ADD.don[ii] = -Math.atan2(vy, vx); ADD.donh[ii] = 0;
+          izParlak ? 0.36 + ton * 0.1 : 0.72 + ton * 0.14, izParlak ? 0.6 + ton * 0.1 : 0.96 + ton * 0.04, 1.0, 11, -1.65, 0.42, izParlak ? 0.7 : 0.48 + Math.random() * 0.12);
+        RH.don[ii] = -Math.atan2(vy, vx); RH.donh[ii] = 0;
         // hafif hava pufu
         if (Math.random() < 0.18) {
           yay(ADD, px, py, 0.2, vx * 0.45, vy * 0.62, 0,
@@ -1236,6 +1315,450 @@
   }
 
   // =====================================================================
+  // ORTAM: zemin türü, hava, gece (bölüm verisinden; alan yoksa eski davranış)
+  // =====================================================================
+  var zTur = 'cim', hTur = '', izParlak = false, izYagmur = false, izDamSay = 0, balIzSure = 0, balIzSay = 0, esSay = 0;
+  var yildizSicak = false, konfMod = '', zeminOnceki = '', zIzSay = 0, zIzHalka = 0, sonYerSekT = -9, kenarMesh = null;
+  var ZEMINLER = { cim: 1, islak: 1, kar: 1, buz: 1, kum: 1, seker: 1, ay: 1, bulut: 1 };
+  var SEKER = [[1, 0.42, 0.62], [0.52, 0.86, 1.0], [1, 0.84, 0.30], [0.62, 0.92, 0.52], [0.78, 0.56, 1.0], [1, 0.62, 0.36]];
+  function bAlan(ad) {
+    var b = aktifBolum; if (!b) return undefined;
+    if (b[ad] !== undefined) return b[ad];
+    if (b.bolum && typeof b.bolum === 'object' && b.bolum[ad] !== undefined) return b.bolum[ad];
+    if (typeof BOLUMLER !== 'undefined' && BOLUMLER && b.idx != null && BOLUMLER[b.idx] && BOLUMLER[b.idx][ad] !== undefined) return BOLUMLER[b.idx][ad];
+    return undefined;
+  }
+  function ortamAyarla() {
+    var z = bAlan('zeminTur');
+    zTur = (z && ZEMINLER[z]) ? z : 'cim';
+    hTur = String(bAlan('hava') || '');
+    if (bAlan('gece')) geceMod = true;
+    var kar = zTur === 'kar' || zTur === 'buz' || hTur === 'kar' || hTur === 'karhafif';
+    izParlak = !geceMod && (kar || zTur === 'kum' || zTur === 'bulut');
+    izYagmur = hTur === 'yagmur' || hTur === 'firtina' || hTur === 'gunesliyagmur';
+    var biyom = bAlan('biyom') | 0;
+    konfMod = kar ? 'kar' : ((hTur === 'cicek' || biyom === 23) ? 'sakura' : ((zTur === 'seker' || hTur === 'seker') ? 'seker' : ((zTur === 'ay' || hTur === 'yildiztozu') ? 'ay' : '')));
+    if (z) {        // yeni bölümler: ortam süsleri de zemine/havaya uysun (eski 25 bölüm değişmez)
+      var tm = kar ? 'kar' : zTur === 'kum' ? 'col' : zTur === 'seker' ? 'pamuk' : zTur === 'ay' ? 'gece' : zTur === 'bulut' ? 'bulut'
+        : hTur === 'cicek' ? 'sakura' : hTur === 'yaprak' ? 'sonbahar' : 'cayir';
+      aktifTema = tm; atesTemala(geceMod, tm); tohumTemala(tm);
+      if (huzmeMesh) huzmeMesh.visible = !geceMod && !izYagmur;
+    }
+    if (izMesh) { var u = izMesh.material.uniforms; u.uKenar.value = izParlak ? 1 : 0; u.uGece.value = geceMod ? 1 : 0; }
+    if (kenarMesh) kenarMesh.visible = true;
+    yildizSicak = izParlak || zTur === 'seker' || zTur === 'kum' || zTur === 'bulut';
+    balIzSure = 0; esSay = 0; zIzSay = 0;
+    if (EFEKT) { EFEKT.zemin = zTur; EFEKT.izParlak = izParlak; EFEKT.konfeti = konfMod; }
+  }
+  function esintiIcinde() {
+    var el = bAlan('esintiler');
+    if (!el || !el.length || !pVar()) return false;
+    var kanca = (typeof UCUS !== 'undefined' && UCUS && typeof UCUS.esintiIcinde === 'function') ? UCUS.esintiIcinde : null;
+    for (var i = 0; i < el.length; i++) {
+      var e = el[i]; if (!e) continue;
+      if (kanca) { if (kanca(P, e)) return true; continue; }
+      var w = e.w || 6, h = e.h || 4;
+      if (Math.abs(P.x - e.x) <= w * 0.5 && P.y >= e.y && P.y <= e.y + h) return true;
+    }
+    return false;
+  }
+  // zemine göre iniş/sekme parçacıkları (guc 0..1). 'cim' için false döner: eski efekt kullanılır.
+  // iniş/ıska pufu: Pırıl'ın ARKASINDA (z<0), daha küçük ve saydam; yüzü hep görünsün
+  function pufYay(x, y, vx, vy, om, b0, b1, r, g, b, cek, surt, a0) {
+    return yay(NOR, x, Math.min(y, yerY() + 0.45), -0.7, vx, vy * 0.6, 0, om * 0.85, b0 * 0.62, b1 * 0.62, r, g, b, 2, cek, surt, a0 * 0.62);
+  }
+  function zeminParca(x, y, guc) {
+    var i, a, s, ii, n, b;
+    guc = Math.max(0.3, Math.min(1, guc));
+    if (zTur === 'kar') {
+      halka(x, y + 0.06, 0.4, 0.8 + 2.2 * guc, 0.55, 0.62, 0.78, 1.0, 0, 1.25);
+      n = Math.round(6 + 6 * guc);
+      for (i = 0; i < n; i++) {        // kar pufu: iki yana kabarır
+        var ty = (i % 2 ? 1 : -1), ts = 1.0 + Math.random() * 2.2 * guc;
+        b = 0.36 + Math.random() * 0.24;
+        pufYay(x + ty * Math.random() * 0.5, y + 0.25 + Math.random() * 0.25, ty * ts, 0.5 + Math.random() * 1.2, 0.75 + Math.random() * 0.35, b, b * 1.5, 0.86, 0.92, 1.0, 0.6, 2.4, 0.92);
+      }
+      n = Math.round(5 + 7 * guc);
+      for (i = 0; i < n; i++) {        // savrulan kar topakları
+        a = 0.45 + Math.random() * 2.25; s = (2.5 + Math.random() * 3) * (0.6 + 0.5 * guc);
+        b = 0.2 + Math.random() * 0.16;
+        yay(NOR, x + (Math.random() - 0.5) * 0.6, y + 0.15, 0.7, Math.cos(a) * s, Math.sin(a) * s, 0,
+          0.9 + Math.random() * 0.3, b, b * 0.8, 0.80, 0.88, 1.0, 7, 11, 0.6, 1);
+      }
+      for (i = 0; i < 4; i++) {        // kar pırıltısı
+        ii = yay(ADD, x + (Math.random() - 0.5) * 1.4, y + 0.3 + Math.random() * 0.5, 0.8, (Math.random() - 0.5) * 1.5, 1 + Math.random(), 0,
+          0.6, 0.3, 0.05, 0.8, 0.92, 1.0, 1, 0.5, 1.5, 0.9);
+        ADD.donh[ii] = 3;
+      }
+    } else if (zTur === 'buz') {
+      halka(x, y + 0.05, 0.3, 0.7 + 2.0 * guc, 0.5, 0.55, 0.88, 1.0, 0, 1.3);
+      n = Math.round(6 + 6 * guc);
+      for (i = 0; i < n; i++) {        // buz kırıntıları
+        a = 0.35 + Math.random() * 2.45; s = (2.4 + Math.random() * 3.2) * (0.6 + 0.5 * guc);
+        b = 0.13 + Math.random() * 0.12;
+        yay(NOR, x + (Math.random() - 0.5) * 0.5, y + 0.1, 0.7, Math.cos(a) * s, Math.sin(a) * s, 0,
+          0.7 + Math.random() * 0.3, b, b * 0.7, 0.62, 0.86, 1.0, 7, 13, 0.6, 1);
+      }
+      for (i = 0; i < 7; i++) {        // buz pırıltıları
+        a = 0.4 + Math.random() * 2.3; s = 1.5 + Math.random() * 2.5;
+        ii = yay(ADD, x + (Math.random() - 0.5) * 0.8, y + 0.2, 0.8, Math.cos(a) * s, Math.sin(a) * s, 0,
+          0.55 + Math.random() * 0.3, 0.38 + Math.random() * 0.14, 0.05, 0.75, 0.95, 1.0, 1, 2, 1.6, 0.95);
+        ADD.donh[ii] = (i % 2 ? 1 : -1) * 4;
+      }
+      buzCizgi(x, y, 1);
+    } else if (zTur === 'kum') {
+      halka(x, y + 0.06, 0.4, 0.8 + 2.0 * guc, 0.55, 1.0, 0.80, 0.42, 0, 1.25);
+      n = Math.round(7 + 6 * guc);
+      for (i = 0; i < n; i++) {        // altın kum tozu bulutu: yavaşça kabarır, asılı kalır
+        var ky = (i % 2 ? 1 : -1), ks = 0.8 + Math.random() * 2.0 * guc;
+        b = 0.42 + Math.random() * 0.26;
+        pufYay(x + ky * Math.random() * 0.6, y + 0.3 + Math.random() * 0.35, ky * ks, 0.6 + Math.random() * 1.0, 1.1 + Math.random() * 0.5, b, b * 1.8, 0.98, 0.84, 0.56, 0.4, 1.8, 0.85);
+      }
+      for (i = 0; i < 8; i++) {        // kum taneleri
+        a = 0.5 + Math.random() * 2.1; s = (2 + Math.random() * 2.6) * (0.6 + 0.5 * guc);
+        b = 0.1 + Math.random() * 0.08;
+        yay(NOR, x + (Math.random() - 0.5) * 0.5, y + 0.1, 0.7, Math.cos(a) * s, Math.sin(a) * s, 0,
+          0.7 + Math.random() * 0.2, b, b, 0.90, 0.68, 0.34, 7, 12, 0.5, 1);
+      }
+    } else if (zTur === 'islak') {
+      halka(x, y + 0.05, 0.28, 1.2 + 1.6 * guc * yolKf2(), 0.6, 0.46, 0.80, 1.0, 0, 1.3);
+      halka(x, y + 0.04, 0.3, 1.6 + 1.8 * guc * yolKf2(), 0.75, 0.62, 0.88, 1.0, 0.2, 1.35);
+      n = Math.round(7 + 7 * guc);
+      for (i = 0; i < n; i++) {        // su sıçraması: taç biçiminde damlalar
+        var ud = i / (n - 1), tp = Math.sin(ud * Math.PI);
+        a = 0.45 + ud * 2.25; s = (2.2 + 2.6 * tp + Math.random() * 1.2) * (0.6 + 0.5 * guc);
+        b = 0.15 + Math.random() * 0.1;
+        yay(NOR, x + (ud - 0.5) * 0.8, y + 0.08, 0.6, Math.cos(a) * s, Math.sin(a) * s, 0,
+          0.7 + 0.2 * tp, b, b * 0.5, 0.50, 0.80, 1.0, 7, 12, 0.6, 0.95);
+      }
+      for (i = 0; i < 3; i++) {
+        ii = yay(ADD, x + (Math.random() - 0.5) * 0.7, y + 0.2, 0.7, (Math.random() - 0.5) * 2, 2 + Math.random() * 2, 0,
+          0.45, 0.3, 0.05, 0.75, 0.95, 1.0, 1, 6, 1, 0.85);
+        ADD.donh[ii] = 4;
+      }
+    } else if (zTur === 'seker') {
+      halka(x, y + 0.06, 0.4, 0.8 + 2.0 * guc, 0.5, 1.0, 0.68, 0.86, 0, 1.25);
+      n = Math.round(7 + 7 * guc);
+      for (i = 0; i < n; i++) {        // renkli şeker kırıntıları
+        var sc = SEKER[i % SEKER.length];
+        a = 0.4 + Math.random() * 2.35; s = (2.4 + Math.random() * 3) * (0.6 + 0.5 * guc);
+        b = 0.2 + Math.random() * 0.1;
+        ii = yay(NOR, x + (Math.random() - 0.5) * 0.6, y + 0.15, 0.7, Math.cos(a) * s, Math.sin(a) * s, 0,
+          0.9 + Math.random() * 0.3, b, b * 0.8, sc[0], sc[1], sc[2], (i % 3 === 0) ? 3 : 14, 10, 0.7, 1);
+        NOR.donh[ii] = (Math.random() - 0.5) * 8;
+      }
+      for (i = 0; i < 4; i++) {
+        b = 0.5 + Math.random() * 0.2;
+        pufYay(x + (i - 1.5) * 0.35, y + 0.35, (i - 1.5) * 1.2, 0.6 + Math.random() * 0.6, 0.7, b, b * 1.6, 1.0, 0.86, 0.94, 0, 2.4, 0.85);
+      }
+    } else if (zTur === 'ay') {
+      halka(x, y + 0.05, 0.4, 0.8 + 2.2 * guc, 1.0, 0.70, 0.72, 0.82, 0, 1.25);
+      n = Math.round(8 + 6 * guc);
+      for (i = 0; i < n; i++) {        // gri toz: yavaş yükselir, yavaş iner (ağırlıksız)
+        var ay_ = (i % 2 ? 1 : -1), as = 0.5 + Math.random() * 1.6 * guc;
+        b = 0.45 + Math.random() * 0.3;
+        pufYay(x + ay_ * Math.random() * 0.5, y + 0.25 + Math.random() * 0.3, ay_ * as, 0.9 + Math.random() * 1.2 * guc, 2.2 + Math.random() * 0.8, b, b * 2.2, 0.80, 0.80, 0.86, 0.75, 0.45, 0.8);
+      }
+      for (i = 0; i < 6; i++) {        // taşçıklar: ağır çekim yay çizer
+        a = 0.6 + Math.random() * 1.9; s = (1.6 + Math.random() * 1.4) * (0.6 + 0.5 * guc);
+        b = 0.12 + Math.random() * 0.08;
+        yay(NOR, x + (Math.random() - 0.5) * 0.5, y + 0.1, 0.7, Math.cos(a) * s, Math.sin(a) * s, 0,
+          1.8 + Math.random() * 0.4, b, b, 0.62, 0.62, 0.70, 7, 2.2, 0, 1);
+      }
+      for (i = 0; i < 3; i++) {        // yıldız tozu
+        ii = yay(ADD, x + (Math.random() - 0.5) * 1.2, y + 0.4, 0.8, (Math.random() - 0.5) * 0.8, 0.6 + Math.random() * 0.6, 0,
+          1.2, 0.28, 0.05, 0.85, 0.85, 1.0, 1, 0, 0.6, 0.85);
+        ADD.donh[ii] = 2;
+      }
+    } else if (zTur === 'bulut') {
+      halka(x, y + 0.06, 0.4, 0.8 + 2.0 * guc, 0.5, 1.0, 0.84, 0.94, 0, 1.25);
+      n = Math.round(7 + 6 * guc);
+      for (i = 0; i < n; i++) {        // pamuk pufları
+        a = (i / (n - 1)) * Math.PI; s = 1.0 + Math.random() * 2.0 * guc;
+        b = 0.6 + Math.random() * 0.4;
+        pufYay(x + Math.cos(a) * 0.6, y + 0.3 + Math.random() * 0.3, Math.cos(a) * s, 0.3 + Math.sin(a) * s * 0.4, 0.9 + Math.random() * 0.4, b, b * 1.6, (i % 3 === 0) ? 0.84 : 1, (i % 3 === 0) ? 0.86 : 0.95, (i % 3 === 0) ? 1.0 : 0.98, 0, 2.2, 0.95);
+      }
+      for (i = 0; i < 4; i++) {
+        yay(NOR, x + (Math.random() - 0.5) * 1.2, y + 0.3, 0.85, (Math.random() - 0.5) * 2.2, 2.6 + Math.random() * 1.4, 0,
+          0.9, 0.32 + Math.random() * 0.12, 0.2, 1, 0.88, 0.96, 10, 6, 0.6, 0.95);
+      }
+    } else return false;
+    return true;
+  }
+  function buzCizgi(x, y, a0) {        // buzda kayma çizgisi (yerde, Pırıl'ın arkasında)
+    var yon = (pVar() && P.vx < 0) ? -1 : 1;
+    var ii = yay(NOR, x - yon * 0.5, y + 0.06, 0.65, 0, 0, 0, 1.4, 1.7, 1.9, 0.30, 0.62, 0.92, 11, 0, 0, 0.9 * a0);
+    NOR.don[ii] = yon > 0 ? 0 : Math.PI; NOR.donh[ii] = 0;
+  }
+  // yuvarlanırken zemine göre iz (kar izi, kayma çizgisi, kum tozu, su damlası…)
+  function zeminIzGuncelle(dt) {
+    var d = durum();
+    if (d === 'yuvar' && zeminOnceki === 'ucus' && zTur !== 'cim' && pVar() && (zaman - sonYerSekT) > 0.3) zeminParca(P.x, yerY(), 0.4);
+    zeminOnceki = d;
+    if (d !== 'yuvar' || !pVar() || zTur === 'cim') { zIzSay = 0; return; }
+    var v = Math.abs(P.vx || 0); if (v < 0.5) return;
+    var yon = P.vx > 0 ? 1 : -1, zy = yerY(), ii, b, ar = 0.055;
+    zIzSay += dt; zIzHalka += dt;
+    while (zIzSay > ar) {
+      zIzSay -= ar;
+      var x = P.x - yon * 0.25;
+      if (zTur === 'kar') {            // karda yassı iz + geriye savrulan topak
+        ii = yay(NOR, x, zy + 0.04, 0.55, 0, 0, 0, 2.6, 0.8, 0.8, 0.50, 0.62, 0.86, 5, 0, 0, 0.72);
+        NOR.don[ii] = 0; NOR.donh[ii] = 0;
+        if (Math.random() < 0.5) {
+          b = 0.16 + Math.random() * 0.1;
+          yay(NOR, x, zy + 0.2, 0.7, -yon * (1 + Math.random() * 1.5) + P.vx * 0.3, 1.5 + Math.random() * 1.5, 0, 0.6, b, b * 0.7, 0.82, 0.89, 1.0, 7, 9, 0.5, 1);
+        }
+      } else if (zTur === 'buz') {
+        buzCizgi(P.x, zy, 0.8);
+        if (Math.random() < 0.3) {
+          ii = yay(ADD, x, zy + 0.15, 0.7, -yon * 0.6, 0.6, 0, 0.45, 0.3, 0.05, 0.75, 0.95, 1.0, 1, 0, 1.5, 0.9);
+          ADD.donh[ii] = 4;
+        }
+      } else if (zTur === 'kum' || zTur === 'ay' || zTur === 'bulut') {
+        if (Math.random() < (zTur === 'ay' ? 0.5 : 0.7)) {
+          b = 0.35 + Math.random() * 0.2;
+          var gri = zTur === 'ay', bu = zTur === 'bulut';
+          pufYay(x, zy + 0.25, -yon * (0.6 + Math.random()), gri ? 0.5 + Math.random() * 0.6 : 0.4 + Math.random() * 0.5, gri ? 1.8 : 0.9, b, b * 1.9, gri ? 0.80 : (bu ? 1.0 : 0.97), gri ? 0.80 : (bu ? 0.96 : 0.83), gri ? 0.86 : (bu ? 0.99 : 0.55), gri ? 0.3 : 0, 1.4, 0.8);
+        }
+      } else if (zTur === 'islak') {
+        b = 0.12 + Math.random() * 0.07;
+        yay(NOR, x, zy + 0.12, 0.7, -yon * (1 + Math.random() * 1.5), 1.8 + Math.random() * 1.6, 0, 0.55, b, b * 0.6, 0.52, 0.80, 1.0, 7, 11, 0.4, 0.95);
+      } else if (zTur === 'seker' && Math.random() < 0.4) {
+        var sc = SEKER[(Math.random() * SEKER.length) | 0];
+        b = 0.16 + Math.random() * 0.06;
+        ii = yay(NOR, x, zy + 0.15, 0.7, -yon * (1 + Math.random()), 1.6 + Math.random() * 1.4, 0, 0.7, b, b, sc[0], sc[1], sc[2], 14, 10, 0.5, 1);
+        NOR.donh[ii] = (Math.random() - 0.5) * 8;
+      }
+    }
+    if (zTur === 'islak' && zIzHalka > 0.3) { zIzHalka = 0; halka(P.x, zy + 0.04, 0.2, 1.2 * yolKf2(), 0.6, 0.55, 0.85, 1.0, 0, 1.35); }
+  }
+  // çekerken yol bir baloncuğa değecekse baloncuk hafifçe parlar ("buna değeceksin"); ADD 45..48
+  var BN = 4, bYol = new Float32Array(BN), bPirT = 0, bPat = new Uint8Array(BN), bHalkaT = 0, esOkT = 0;
+  function baloncukYolGuncelle(dt, t) {
+    var bl = bAlan('baloncuklar');
+    var gor = yolGorunur > 0.05 && (yolVx !== 0 || yolVy !== 0);
+    var g = yc(), sSon = (EFEKT.inis.s > 0 && EFEKT.inis.s < 7.5) ? EFEKT.inis.s : 4.0;
+    bPirT += dt; var pir = bPirT > 0.14; if (pir) bPirT = 0;
+    for (var i = 0; i < BN; i++) {
+      var b = bl && bl[i], hd = 0, r = 1.4;
+      if (b) {
+        r = (b.r != null ? b.r : 1.4);
+        if (gor) {
+          var rr = r + R_P;
+          for (var k = 0; k <= 48; k++) {
+            var sk = sSon * k / 48, dx = yolX + yolVx * sk - b.x, dy = yolY + yolVy * sk - 0.5 * g * sk * sk - b.y;
+            if (dx * dx + dy * dy < rr * rr) { hd = 1; break; }
+          }
+        }
+      }
+      bYol[i] += (hd - bYol[i]) * Math.min(1, dt * (hd > bYol[i] ? 12 : 7));
+      if (i === 0) EFEKT.balIpucu = bYol[0];
+      var j = 45 + i, j3 = j * 3;
+      if (b && !bPat[i]) {               // her zaman hafif nabızlı hâle; yol değecekse belirginleşir
+        var nb = 0.5 + 0.5 * Math.sin(t * 6.5 + i);
+        var taban = 0.5 + 0.5 * Math.sin(t * 2.2 + i * 1.7);
+        ADD.poz[j3] = b.x; ADD.poz[j3 + 1] = b.y; ADD.poz[j3 + 2] = -0.2;
+        ADD.boy[j] = r * (2.7 + 0.25 * nb);
+        ADD.alfa[j] = Math.max(bYol[i] * (0.38 + 0.14 * nb), 0.05 + 0.04 * taban);
+        if (pir && bYol[i] > 0.6) {     // kenarında dönen minik pırıltı
+          var a = Math.random() * 6.283;
+          var ip = yay(ADD, b.x + Math.cos(a) * r, b.y + Math.sin(a) * r, 0.3, -Math.sin(a) * 0.8, Math.cos(a) * 0.8 + 0.3, 0,
+            0.5, 0.36, 0.05, 0.85, 0.97, 1.0, 1, 0, 1, 0.9);
+          ADD.donh[ip] = 3;
+        }
+      } else ADD.alfa[j] = 0;
+    }
+    // baloncukların çevresinde sürekli dönen pırıltı halkası (gri/beyaz zeminde de fark edilsin)
+    bHalkaT += dt;
+    var kutlama = durum() === 'kavus';
+    if (bl && bHalkaT > 0.32 && !kutlama) {   // çok hafif: seyrek tek pırıltı
+      bHalkaT = 0;
+      for (var q = 0; q < BN; q++) {
+        var bq = bl[q]; if (!bq || bPat[q]) continue;
+        var rq = (bq.r != null ? bq.r : 1.4) * 1.02, aq = t * 1.6 + q * 2.1 + (Math.random() < 0.5 ? 0 : Math.PI);
+        var koyu = izParlak || zTur === 'ay';
+        var H = koyu ? NOR : ADD;
+        var iq = yay(H, bq.x + Math.cos(aq) * rq, bq.y + Math.sin(aq) * rq, 0.35, -Math.sin(aq) * 0.9, Math.cos(aq) * 0.9, 0,
+          0.6, koyu ? 0.24 : 0.28, 0.05, koyu ? 0.5 : 0.85, koyu ? 0.72 : 0.97, 1.0, 1, 0, 0.5, koyu ? 0.55 : 0.5);
+        H.donh[iq] = 3;
+      }
+    }
+    // esinti bölgelerinin içinde ileri akan oklar/çizgiler (kar, buz, kum ve ayda koyu renkli)
+    var el = bAlan('esintiler');
+    esOkT += dt;
+    if (false && el && el.length && esOkT > 0.16 && !kutlama) {   // kaldırıldı: esinti oklarını dunya.js çiziyor
+      esOkT = 0;
+      var koyuE = izParlak || zTur === 'kum' || zTur === 'ay' || zTur === 'kar' || zTur === 'buz';
+      for (var e = 0; e < el.length && e < 4; e++) {
+        var es = el[e]; if (!es) continue;
+        var w = es.w != null ? es.w : 8, hh = es.h != null ? es.h : 4;
+        var ex = es.x - w * 0.5 + Math.random() * w * 0.3, ey = es.y + hh * (0.15 + Math.random() * 0.7);
+        var ok = Math.random() < 0.45;
+        var ie = yay(NOR, ex, ey, 0.2, 4.5 + Math.random() * 1.5, 0, 0, Math.min(1.8, w * 0.7 / 5.5), ok ? 0.55 : 1.5, ok ? 0.55 : 1.4,
+          koyuE ? 0.2 : 0.92, koyuE ? 0.36 : 0.97, koyuE ? 0.62 : 1.0, ok ? 12 : 11, 0, 0, koyuE ? 0.75 : 0.6);
+        NOR.don[ie] = 0; NOR.donh[ie] = 0;
+      }
+    }
+  }
+  // erken dokunuş sıraya alındı: Pırıl'ın kanadında minik pırıltı
+  function onKanatSira(v) {
+    if (!pVar()) return;
+    var x = P.x, y = P.y;
+    halka(x, y, 0.2, 1.0, 0.28, 0.92, 0.84, 1.0);
+    for (var i = 0; i < 5; i++) {
+      var a = (i / 5) * 6.283 + Math.random() * 0.4;
+      var ii = yay(ADD, x + Math.cos(a) * 0.55, y + Math.sin(a) * 0.45, 0.7, (P.vx || 0) * 0.8 + Math.cos(a) * 0.8, (P.vy || 0) * 0.8 + Math.sin(a) * 0.8, 0,
+        0.32, 0.26, 0.04, i % 2 ? 0.86 : 1.0, i % 2 ? 0.72 : 0.92, i % 2 ? 1.0 : 0.55, 1, 0, 2, 0.95);
+      ADD.donh[ii] = 4;
+    }
+  }
+  // Bilbo Pırıl'a koşuyor: ayak izinde zemine uygun küçük puflar + üstünde kalpçikler
+  var kosX0 = 0, kosX1 = 0, kosSure = 0, kosT = -1, kosPufT = 0, kosKalpT = 0;
+  function onBilboKos(v) {
+    if (!v || v.x0 === undefined || v.x1 === undefined) return;
+    kosX0 = v.x0; kosX1 = v.x1; kosSure = Math.max(0.2, v.sure || 1); kosT = 0; kosPufT = 0; kosKalpT = 0.1;
+  }
+  function kosGuncelle(dt) {
+    if (kosT < 0) return;
+    kosT += dt;
+    if (kosT > kosSure + 0.05) { kosT = -1; return; }
+    var f = Math.min(1, kosT / kosSure), x = kosX0 + (kosX1 - kosX0) * f, zy = yerY(), yon = kosX1 >= kosX0 ? 1 : -1, b, ii;
+    kosPufT += dt;
+    if (kosPufT > 0.11) {
+      kosPufT = 0;
+      var px = x - yon * 0.3;
+      if (zTur === 'islak') {
+        for (var d = 0; d < 3; d++) { b = 0.1 + Math.random() * 0.06;
+          yay(NOR, px, zy + 0.1, 0.6, -yon * (0.6 + Math.random()) + (Math.random() - 0.5), 1.6 + Math.random() * 1.2, 0, 0.5, b, b * 0.6, 0.52, 0.8, 1.0, 7, 10, 0.4, 0.95); }
+        if (Math.random() < 0.4) halka(px, zy + 0.04, 0.15, 0.8 * yolKf2(), 0.5, 0.55, 0.85, 1.0, 0, 1.35);
+      } else if (zTur === 'seker') {
+        var sc = SEKER[(Math.random() * SEKER.length) | 0]; b = 0.14 + Math.random() * 0.05;
+        ii = yay(NOR, px, zy + 0.12, 0.6, -yon * (0.8 + Math.random()), 1.4 + Math.random(), 0, 0.6, b, b, sc[0], sc[1], sc[2], 14, 9, 0.5, 1);
+        NOR.donh[ii] = (Math.random() - 0.5) * 8;
+      } else {
+        var pr = 0.95, pg = 0.92, pb = 0.82, ay_ = zTur === 'ay';
+        if (zTur === 'kar' || zTur === 'buz') { pr = 0.84; pg = 0.9; pb = 1.0; }
+        else if (zTur === 'kum') { pr = 0.97; pg = 0.82; pb = 0.52; }
+        else if (ay_) { pr = 0.8; pg = 0.8; pb = 0.86; }
+        else if (zTur === 'bulut') { pr = 1.0; pg = 0.95; pb = 0.98; }
+        b = 0.3 + Math.random() * 0.15;
+        pufYay(px, zy + 0.2, -yon * (0.5 + Math.random() * 0.6), ay_ ? 0.5 : 0.4 + Math.random() * 0.4, ay_ ? 1.6 : 0.7, b, b * 1.7, pr, pg, pb, ay_ ? 0.3 : 0, 1.6, 0.85);
+      }
+    }
+    kosKalpT -= dt;
+    if (kosKalpT <= 0) {                // koşarken üstünde kalpçikler
+      kosKalpT = 0.32;
+      ii = yay(NOR, x + (Math.random() - 0.5) * 0.4, zy + 1.9, 0.8, (Math.random() - 0.5) * 0.3, 0.7, 0,
+        1.2, 0.18, 0.26, 1, 0.56 + Math.random() * 0.12, 0.76, 4, -0.1, 0.6, 0.85);
+      NOR.don[ii] = (Math.random() - 0.5) * 0.3; NOR.donh[ii] = 0;
+    }
+  }
+  // yardımcılar: sabun köpüğü baloncuğu, esinti, silkinme
+  function onBaloncuk(v) {
+    if (!v) return;
+    var x = v.x, y = v.y, r = 1.4, i, ii, a;
+    var bl = bAlan('baloncuklar');
+    var bo = v.baloncuk || (bl && v.i != null ? bl[v.i] : null);
+    if (bo) { if (x === undefined) x = bo.x; if (y === undefined) y = bo.y; r = bo.r || r; }
+    if (x === undefined || y === undefined) { if (!pVar()) return; x = P.x; y = P.y; }
+    halka(x, y, r * 0.95, r * 1.7, 0.30, 0.80, 0.94, 1.0);              // ince sabun halkası
+    halka(x, y, r * 0.75, r * 1.35, 0.26, 1.0, 0.82, 0.96, 0.04);
+    var fl = yay(ADD, x, y, 0.5, 0, 0, 0, 0.2, r * 1.1, r * 1.8, 0.85, 0.95, 1.0, 0, 0, 0, 0.45);
+    for (i = 0; i < 16; i++) {          // minik damlacıklar
+      a = (i / 16) * 6.283 + Math.random() * 0.3;
+      var s = 2.4 + Math.random() * 1.8, pm = (i % 4 === 0);
+      var b = 0.13 + Math.random() * 0.07;
+      yay(NOR, x + Math.cos(a) * r * 0.9, y + Math.sin(a) * r * 0.9, 0.6, Math.cos(a) * s, Math.sin(a) * s, 0,
+        0.6 + Math.random() * 0.25, b, b * 0.6, pm ? 1.0 : 0.72, pm ? 0.84 : 0.90, 1.0, 7, 8, 1.0, 0.95);
+    }
+    for (i = 0; i < 8; i++) {           // kısa gökkuşağı pırıltısı çember boyunca
+      var c = GOKKUSAGI[i % GOKKUSAGI.length];
+      a = (i / 8) * 6.283 + 0.2;
+      ii = yay(ADD, x + Math.cos(a) * r, y + Math.sin(a) * r, 0.65, Math.cos(a) * 1.2, Math.sin(a) * 1.2, 0,
+        0.45, 0.42, 0.05, 0.5 + 0.5 * c[0], 0.5 + 0.5 * c[1], 0.5 + 0.5 * c[2], 1, 0, 2, 0.95);
+      ADD.donh[ii] = (i % 2 ? 1 : -1) * 4;
+    }
+    balIzSure = 0.5; balIzSay = 0;
+    if (v.i != null && v.i >= 0 && v.i < BN) bPat[v.i] = 1;
+    if (pVar()) {                       // Pırıl'ın altında yukarıyı gösteren iki tombul ok
+      for (i = 0; i < 2; i++) {
+        ii = yay(NOR, P.x, P.y - 1.0 - i * 0.6, 0.8, (P.vx || 0) * 0.9, (P.vy || 0) * 0.8, 0, 0.45, 0.75 - i * 0.12, 0.6, 1.0, 0.95, 0.72, 12, 0, 0, 0.9 - i * 0.2);
+        NOR.don[ii] = -Math.PI / 2; NOR.donh[ii] = 0;
+      }
+    }
+  }
+  function onEsinti(v) {
+    if (!pVar()) return;
+    for (var i = 0; i < 5; i++) {       // girişte serin bir yatay "vuuş"
+      var ey = (i - 2) * 0.4;
+      var H = izParlak ? NOR : ADD;
+      var ii = yay(H, P.x - 0.8, P.y + ey, 0.5, -5 + (P.vx || 0) * 0.5, 0, 0, 0.4, 1.8 - Math.abs(i - 2) * 0.25, 1.2,
+        izParlak ? 0.5 : 0.86, izParlak ? 0.72 : 0.97, 1.0, 11, 0, 1.6, izParlak ? 0.8 : 0.6);
+      H.don[ii] = 0; H.donh[ii] = 0;
+    }
+    halka(P.x - 0.4, P.y, 0.3, 2.0, 0.4, 0.72, 0.92, 1.0, 0, 0);
+  }
+  function onSilkin(v) {
+    var x = (v && v.x !== undefined) ? v.x : (pVar() ? P.x : 0), y = (v && v.y !== undefined) ? v.y : (pVar() ? P.y : 1);
+    for (var i = 0; i < 14; i++) {      // etrafa saçılan minik su damlaları
+      var a = (i / 14) * 6.283 + Math.random() * 0.3, s = 2.2 + Math.random() * 1.8;
+      var b = 0.12 + Math.random() * 0.07;
+      yay(NOR, x + Math.cos(a) * 0.6, y + Math.sin(a) * 0.5, 0.8, Math.cos(a) * s, Math.sin(a) * s * 0.6 + 1.2, 0,
+        0.55 + Math.random() * 0.2, b, b * 0.6, 0.52, 0.80, 1.0, 7, 9, 0.6, 0.95);
+    }
+  }
+  // fırtına diner: güneş ışınları + küçük gökkuşağı pırıltısı
+  function onHavaDindi(v) {
+    var h = hedef(), ox = pVar() ? (P.x + h.x) * 0.5 : h.x, cx = ox, cy = h.y + 6, yarH = 8, yarW = 12, i, ii;
+    if (typeof camera !== 'undefined' && camera) {
+      yarH = Math.abs(camera.position.z) * Math.tan((camera.fov || 45) * Math.PI / 360);
+      yarW = yarH * (camera.aspect || 1.4); cx = camera.position.x; cy = camera.position.y;
+    }
+    var k = Math.max(0.3, Math.min(1, yarH / 10));      // kavuşma yakın planında küçük kalsın
+    var gx = cx - yarW * 0.62, gy = cy + yarH * 0.85;   // sol üstten güneş
+    yay(ADD, gx, gy, -1, 0, 0, 0, 3.2, 3.5 * k, 6.0 * k, 1.0, 0.86, 0.5, 0, 0, 0, 0.55);
+    for (i = 0; i < 9; i++) {
+      var an = -0.25 - i * 0.16, L = yarH * (0.9 + 0.25 * (i % 3));
+      ii = yay(ADD, gx + Math.cos(an) * L * 0.5, gy + Math.sin(an) * L * 0.5, -1, Math.cos(an) * 0.4, Math.sin(an) * 0.4, 0,
+        3.0, L * 0.9, L, 1.0, 0.88, 0.58, 11, 0, 0, 0.32);
+      ADD.don[ii] = -an; ADD.donh[ii] = 0;
+    }
+    for (var bnd = 0; bnd < 6; bnd++) { // küçük gökkuşağı yayı (iki karakterin üstünde)
+      var c = GOKKUSAGI[bnd], R = (3.4 - bnd * 0.24) * k;
+      for (i = 0; i < 18; i++) {        // yumuşak ışık benekleri üst üste binip ince bir yay olur
+        var aa = 0.16 * Math.PI + (i / 17) * 0.68 * Math.PI;
+        yay(NOR, ox + Math.cos(aa) * R, h.y + 1.2 + Math.sin(aa) * R, 0.3, 0, 0.1 * k, 0, 2.8, 0.5 * k, 0.56 * k, c[0], c[1], c[2], 0, 0, 0, 0.6);
+      }
+    }
+    for (i = 0; i < 8; i++) {
+      var ap = 0.2 * Math.PI + Math.random() * 0.6 * Math.PI;
+      ii = yay(ADD, ox + Math.cos(ap) * 3.0 * k, h.y + 1.2 + Math.sin(ap) * 3.0 * k, 0.4, (Math.random() - 0.5) * 0.6 * k, 0.3 * k, 0, 1.6, 0.4 * k, 0.05, 1, 0.95, 0.75, 1, 0, 0.3, 0.9);
+      ADD.donh[ii] = 3;
+    }
+  }
+  // kavuşma konfetisi ortama uysun: _kr,_kg,_kb + döndürülen tür
+  var _kr = 1, _kg = 1, _kb = 1;
+  function konfetiSec(k, pul) {
+    var c;
+    if (konfMod === 'kar') {
+      if (k % 3 === 2) { _kr = 1.0; _kg = 0.84; _kb = 0.36; return 1; }        // altın yıldızcık
+      _kr = (k % 2) ? 0.78 : 0.92; _kg = (k % 2) ? 0.88 : 0.96; _kb = 1.0; return 13;   // kar tanesi
+    }
+    if (konfMod === 'sakura') {
+      var p3 = k % 3; _kr = 1.0; _kg = p3 === 0 ? 0.62 : (p3 === 1 ? 0.76 : 0.88); _kb = p3 === 0 ? 0.80 : (p3 === 1 ? 0.88 : 0.94);
+      return (k % 5 === 4) ? 7 : 5;
+    }
+    if (konfMod === 'seker') { c = SEKER[k % SEKER.length]; _kr = c[0]; _kg = c[1]; _kb = c[2]; return (k % 3 === 0) ? 3 : 14; }
+    if (konfMod === 'ay') {
+      var a3 = k % 3; _kr = a3 === 0 ? 1.0 : (a3 === 1 ? 0.84 : 0.95); _kg = a3 === 0 ? 0.90 : (a3 === 1 ? 0.80 : 0.95); _kb = a3 === 0 ? 0.55 : 1.0;
+      return (k % 2) ? 1 : 0;                                                    // yıldız tozu
+    }
+    c = KONFETI[k % KONFETI.length]; _kr = c[0]; _kg = c[1]; _kb = c[2];
+    return pul ? 7 : 3;
+  }
+
+  // =====================================================================
   // OLAY TEPKİLERİ
   // =====================================================================
   function patlat(x, y, n, hiz, b, r, g, bb, tur) {
@@ -1252,7 +1775,7 @@
     if (yolGorunur <= 0.01) yolGucG = yolGuc;
   }
   function onBirak(v) {
-    yolHedef = 0; izSay = 0; ucusT = 0; kanatIzSure = 0; kanatPirSay = 0;
+    yolHedef = 0; izSay = 0; ucusT = 0; kanatIzSure = 0; kanatPirSay = 0; bPat.fill(0);
     kanatTozSay = 0; izTozSay = 0; izPirSay = 0; cizgiSay = 0;
     kaySay = 0; kaySure = 0.12;           // yeni atış kaydedilir; önceki iz yenisi gelene dek kalır
     // fırlarken salıncaktan rüzgâr dalgası, hız çizgileri ve hız pırıltısı
@@ -1367,7 +1890,9 @@
     if (!v) return;
     var i = v.i | 0; if (i < 0 || i >= YN) return;
     var x = (v.x !== undefined) ? v.x : yX[i], y = (v.y !== undefined) ? v.y : yY[i];
-    yDurum[i] = 0; yOlcek[i] = 1.45; yGecik[i] = 0; yYak[i] = 0; yYol[i] = 0;
+    yDurum[i] = 0; yOlcek[i] = 1.05; yPop[i] = 0.22; yGecik[i] = 0; yYak[i] = 0; yYol[i] = 0;
+    var cit = yay(ADD, x, y, 0.7, 0, 0, 0, 0.16, 1.1, 2.4, 1, 1, 0.9, 1, 0, 0, 0.95);   // "çıt": anlık beyaz-altın parıltı yıldızı
+    ADD.don[cit] = 0; ADD.donh[cit] = 4;
     // art arda toplamada efekt büyür: 1. yıldız sade, 5. yıldız en coşkulu
     var sr = Math.max(1, Math.min(5, v.toplam | 0 || 1)), cf = 0.82 + 0.11 * sr;
     halka(x, y, 0.4, 2.5 * cf, 0.44, 1, 0.86, 0.3);
@@ -1395,9 +1920,10 @@
     }
     var yv = yay(ADD, x, y, 0.45, 0, 0, 0, 0.34, 0.85, 1.65 * cf, 1, 0.96, 0.82, 1, 0, 0, 0.90);
     ADD.donh[yv] = 1.6;
-    uAkt[i] = 1; uT[i] = 0; uIzTimer[i] = 0; uSx[i] = x; uSy[i] = y; sayacOlc(i, v.toplam);
+    uAkt[i] = 1; uT[i] = 0; uIzTimer[i] = 0; uSx[i] = x; uSy[i] = y; sayacOlc(i, v.toplam); uBes[i] = (v.toplam === 5) ? 1 : 0;
     // beşinci yıldız: gökkuşağı halkası
     if (v.toplam === 5) {
+      var fEski = fOl; fOl = 0.75; fisekSekil(x, y, 4); fOl = fEski;   // beşinci yıldız: altın yıldız biçimli patlama
       for (var k = 0; k < 3; k++) {
         var c = GOKKUSAGI[(k * 2) % GOKKUSAGI.length];
         halka(x, y, 0.6 + k * 0.22, 4.0 + k * 0.55, 1.0, 0.84 * c[0] + 0.16, 0.84 * c[1] + 0.14, 0.84 * c[2] + 0.08, 0.10 + k * 0.07);
@@ -1543,6 +2069,9 @@
         yay(NOR, x + (Math.random() - 0.5) * 0.85, y + 0.12, 0.48, (Math.random() - 0.5) * 1.2, 0.7 + Math.random() * 0.7, 0,
           0.50, 0.36, 0.78, 0.88, 0.98, 1.0, 2, 0, 2.3, 0.40);
       }
+    } else if (tur === 'yer' && zTur !== 'cim') {
+      sonYerSekT = zaman;
+      zeminParca(x, yerY(), 1);
     } else {
       halka(x, y + 0.08, 0.4, 2.0, 0.5, 0.95, 0.97, 0.85, 0, 1.25);
       for (i = 0; i < 6; i++) {
@@ -1558,8 +2087,7 @@
       }
       for (i = 0; i < 7; i++) {        // yumuşak toz pufları: iki yana yayılıp kabarır
         var ty = (i % 2 ? 1 : -1), ts = 1.6 + Math.random() * 2.0;
-        yay(NOR, x + ty * (0.2 + Math.random() * 0.4), y + 0.5 + Math.random() * 0.25, 0.9, ty * ts, 0.6 + Math.random() * 0.8, 0,
-          0.75 + Math.random() * 0.3, 0.5 + Math.random() * 0.2, 1.2 + Math.random() * 0.3, 0.97, 0.92, 0.80, 2, 0, 2.6, 0.9);
+        pufYay(x + ty * (0.2 + Math.random() * 0.4), y + 0.5 + Math.random() * 0.25, ty * ts, 0.6 + Math.random() * 0.8, 0.75 + Math.random() * 0.3, 0.5 + Math.random() * 0.2, 1.2 + Math.random() * 0.3, 0.97, 0.92, 0.80, 0, 2.6, 0.9);
       }
       for (i = 0; i < 4; i++) {        // ek çimen parçaları
         a = 0.7 + Math.random() * 1.7; s = 2.5 + Math.random() * 2;
@@ -1614,14 +2142,21 @@
   function onIska(v) {
     var x = (v && v.x !== undefined) ? v.x : (pVar() ? P.x : 0);
     var y = yerY() + 0.2;
+    if (zTur !== 'cim') {               // zemine göre: kar/kum/su… parçacıkları + tatlı yıldızcıklar
+      zeminParca(x, yerY(), 0.8);
+      for (var zi = 0; zi < 3; zi++) {
+        var zs = yay(ADD, x + (zi - 1) * 0.35, y + 0.7, 0.7, (zi - 1) * 1.6, 3.2 + Math.random(), 0, 0.8, 0.42, 0.2, 1, 0.9, 0.45, 1, zTur === 'ay' ? 2 : 6, 0.6, 0.95);
+        ADD.donh[zs] = (zi - 1 || 1) * 4;
+      }
+      return;
+    }
     // komik "puf!" toz bulutu: yuvarlak toplar yarım daire halinde kabarır, biri tepeye zıplar
     for (var i = 0; i < 9; i++) {
       var ua = (i / 8) * Math.PI, us = 1.3 + Math.random() * 0.8;
       var ub = 0.55 + Math.random() * 0.25 + (i === 4 ? 0.2 : 0);
-      yay(NOR, x + Math.cos(ua) * 0.55, y + 0.35 + Math.sin(ua) * 0.4, 0.9, Math.cos(ua) * us, Math.sin(ua) * us * 0.7 + 0.2, 0,
-        0.95 + Math.random() * 0.3, ub, ub * 1.8, 0.98, 0.95, 0.88, 2, 0, 2.8, 0.95);
+      pufYay(x + Math.cos(ua) * 0.55, y + 0.35 + Math.sin(ua) * 0.4, Math.cos(ua) * us, Math.sin(ua) * us * 0.7 + 0.2, 0.95 + Math.random() * 0.3, ub, ub * 1.8, 0.98, 0.95, 0.88, 0, 2.8, 0.95);
     }
-    var tep = yay(NOR, x, y + 0.6, 0.65, 0, 3.4, 0, 0.9, 0.38, 0.5, 0.97, 0.95, 0.88, 2, 5, 0.6, 0.9);
+    var tep = pufYay(x, y + 0.6, 0, 3.4, 0.9, 0.38, 0.5, 0.97, 0.95, 0.88, 5, 0.6, 0.9);
     NOR.donh[tep] = 0;
     for (i = 0; i < 3; i++) {           // tepeden fırlayan minik sarı yıldızcıklar (tatlı, olumsuz değil)
       var ys2 = yay(ADD, x + (i - 1) * 0.35, y + 0.7, 0.7, (i - 1) * 1.6, 3.2 + Math.random(), 0, 0.8, 0.42, 0.2, 1, 0.9, 0.45, 1, 6, 0.6, 0.95);
@@ -1642,24 +2177,112 @@
   var KONFETI = [[1, 0.8, 0.2], [1, 0.45, 0.68], [0.64, 0.46, 0.96], [0.32, 0.84, 0.64], [0.36, 0.74, 1], [1, 0.62, 0.26], [1, 0.92, 0.56], [0.98, 0.58, 0.84]];
   // kavuşma coşkusu: 5 yıldızda daha büyük; son bölümde (BOLUMLER.length) havai fişek finali
   var kavusYildiz = 0, kavusFinal = false, fisekT = 0, fisekSay = 0;
+  function yayF(x, y, z, vx, vy, vz, om, b0, b1, r, g, b, tur, cek, surt, a0) {
+    if (fBuy > 1) { r *= r; g *= g; b *= b; a0 *= 0.72; }   // finalde doygun renk, üst üste binince beyaza kaçmasın
+    return yay(ADD, x, y, z, vx * fOl, vy * fOl, vz, om * fOmur, b0 * fOl * fBuy, b1 * fOl * fBuy, r, g, b, tur, cek * fOl, surt, a0);
+  }
+  function halkaF(x, y, r0, r1, om, r, g, b) { halka(x, y, r0 * fOl, r1 * fOl, om, r, g, b); }
   function fisekPatlat(x, y, buyuk) {
     var c = KONFETI[(Math.random() * KONFETI.length) | 0], c2 = KONFETI[(Math.random() * KONFETI.length) | 0];
     var n = buyuk ? 26 : 18, hz = buyuk ? 6.2 : 5.0;
     for (var i = 0; i < n; i++) {
       var a = (i / n) * 6.283 + Math.random() * 0.2, s = hz * (0.75 + Math.random() * 0.35), cc = (i % 2) ? c : c2;
-      var ii = yay(ADD, x, y, 0.3, Math.cos(a) * s, Math.sin(a) * s, 0, 0.85 + Math.random() * 0.3, (i % 2 === 0) ? 0.85 : 0.62, 0.10,
+      var ii = yayF(x, y, 0.3, Math.cos(a) * s, Math.sin(a) * s, 0, 0.85 + Math.random() * 0.3, (i % 2 === 0) ? 0.85 : 0.62, 0.10,
         cc[0], cc[1], cc[2], (i % 2 === 0) ? 1 : 0, 1.0, 2.2, 1.0);
       ADD.donh[ii] = (i % 2 ? 1 : -1) * 3.0;
     }
-    yay(ADD, x, y, 0.3, 0, 0, 0, 0.30, 1.2, 2.6, c[0] * 0.8, c[1] * 0.8, c[2] * 0.8, 0, 0, 0, 0.45);
-    halka(x, y, 0.4, buyuk ? 3.6 : 2.8, 0.5, 0.5 + 0.5 * c[0], 0.5 + 0.5 * c[1], 0.5 + 0.5 * c[2]);
+    yayF(x, y, 0.3, 0, 0, 0, 0.30, 1.2, 2.6, c[0] * 0.8, c[1] * 0.8, c[2] * 0.8, 0, 0, 0, 0.45);
+    halkaF(x, y, 0.4, buyuk ? 3.6 : 2.8, 0.5, 0.5 + 0.5 * c[0], 0.5 + 0.5 * c[1], 0.5 + 0.5 * c[2]);
+  }
+  // ---------- FİNAL ROKETLERİ (havuzlu: 8 roket) ----------
+  var fOl = 1, fBuy = 1, fOmur = 1;   // finalde patlamalar daha iri ve uzun ömürlü   // havai fişek ölçeği: kamera yakınken (kavuşma yakın planı) küçülür ki ekran dolmasın
+  var RK = 8, rkX = new Float32Array(RK), rkY = new Float32Array(RK), rkVy = new Float32Array(RK), rkHy = new Float32Array(RK),
+    rkAkt = new Uint8Array(RK), rkTip = new Uint8Array(RK), rkIz = new Float32Array(RK), rkImlec = 0, finaleOldu = false;
+  // patlama yüksekliği: başların (hedef + 2,4) üstü ile ekranın üst kenarı arasında (yatay ve dikeyde aynı mantık)
+  function fUstY(h, cyF, yarH, u) {
+    var alt = h.y + 2.4 * Math.max(0.85, fOl), ust = cyF + yarH * 0.85;
+    if (ust < alt + 1) ust = alt + 1;
+    return alt + (ust - alt) * u;
+  }
+  var _fA = null, _fB = null;
+  // ekran noktası (NDC -1..1) → z=0 düzleminde dünya noktası (kamera eğik olsa da doğru)
+  function ekranDunya(nx, ny, out) {
+    if (typeof camera === 'undefined' || !camera) { out.set(nx * 10, 6 + ny * 6, 0); return; }
+    _v3a.set(nx, ny, 0.5).unproject(camera); _v3a.sub(camera.position);
+    var sk = -camera.position.z / (_v3a.z || -1e-4);
+    out.copy(camera.position).addScaledVector(_v3a, sk);
+  }
+  function roketAt(x, y0, hy, tip) {
+    var i = rkImlec; rkImlec = (rkImlec + 1) % RK;
+    rkX[i] = x; rkY[i] = y0; rkHy[i] = hy; rkVy[i] = (15 + Math.random() * 3) * fOl; rkAkt[i] = 1; rkTip[i] = tip; rkIz[i] = 0;
+  }
+  function roketGuncelle(dt) {
+    for (var i = 0; i < RK; i++) {
+      if (!rkAkt[i]) continue;
+      rkY[i] += rkVy[i] * dt; rkVy[i] = Math.max(6 * fOl, rkVy[i] - 5 * fOl * dt);
+      rkIz[i] += dt;
+      while (rkIz[i] > 0.045) {         // kıvılcım izi
+        rkIz[i] -= 0.045;
+        var ii = yay(ADD, rkX[i] + (Math.random() - 0.5) * 0.12 * fOl, rkY[i], 0.2, (Math.random() - 0.5) * 0.6 * fOl, (-1.2 - Math.random()) * fOl, 0,
+          0.36, 0.3 * fOl, 0.04, 1.0, 0.82, 0.48, Math.random() < 0.3 ? 1 : 0, 2 * fOl, 1, 0.85);
+        ADD.donh[ii] = 3;
+      }
+      if (rkY[i] >= rkHy[i]) { rkAkt[i] = 0; fisekSekil(rkX[i], rkY[i], rkTip[i]); }
+    }
+  }
+  function fisekSekil(x, y, tip) {
+    var i, ii, n, c, c2, a, sp;
+    if (tip === 1) {                    // kalp
+      n = 30;
+      for (i = 0; i < n; i++) {
+        a = (i / n) * 6.283;
+        var sx = Math.sin(a), hx = 16 * sx * sx * sx, hy = 13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a);
+        ii = yayF(x, y, 0.3, hx / 16 * 5.0, hy / 16 * 5.0 + 0.5, 0, 1.0 + Math.random() * 0.2, (i % 2) ? 0.6 : 0.8, 0.1,
+          1.0, (i % 3 === 0) ? 0.78 : 0.48, (i % 3 === 0) ? 0.86 : 0.70, (i % 2) ? 0 : 1, 0.6, 2.2, 1.0);
+        ADD.donh[ii] = 3;
+      }
+      halkaF(x, y, 0.4, 3.0, 0.5, 1.0, 0.6, 0.8);
+    } else if (tip === 2) {             // altın söğüt: sarkarak süzülen ışıltılar
+      n = 30;
+      for (i = 0; i < n; i++) {
+        a = (i / n) * 6.283 + Math.random() * 0.2; sp = 4.2 + Math.random() * 1.4;
+        ii = yayF(x, y, 0.3, Math.cos(a) * sp, Math.sin(a) * sp + 1.0, 0, 1.8 + Math.random() * 0.5, 0.62, 0.14,
+          1.0, 0.84 + 0.1 * Math.random(), 0.42, (i % 3 === 0) ? 1 : 0, 3.4, 1.4, 1.0);
+        ADD.donh[ii] = 2;
+      }
+      yayF(x, y, 0.3, 0, 0, 0, 0.35, 1.4, 3.0, 1.0, 0.8, 0.4, 0, 0, 0, 0.5);
+    } else if (tip === 3) {             // çift renkli iç içe halka
+      c = KONFETI[(Math.random() * KONFETI.length) | 0]; c2 = GOKKUSAGI[(Math.random() * 6) | 0];
+      for (i = 0; i < 22; i++) {
+        a = (i / 22) * 6.283;
+        ii = yayF(x, y, 0.3, Math.cos(a) * 6.4, Math.sin(a) * 6.4, 0, 0.95, 0.7, 0.1, c[0], c[1], c[2], 1, 0.8, 2.4, 1.0);
+        ADD.donh[ii] = 3;
+      }
+      for (i = 0; i < 14; i++) {
+        a = (i / 14) * 6.283 + 0.2;
+        yayF(x, y, 0.3, Math.cos(a) * 3.4, Math.sin(a) * 3.4, 0, 0.9, 0.6, 0.1, c2[0], c2[1], c2[2], 0, 0.8, 2.4, 1.0);
+      }
+      halkaF(x, y, 0.4, 3.8, 0.5, 0.5 + 0.5 * c[0], 0.5 + 0.5 * c[1], 0.5 + 0.5 * c[2]);
+    } else if (tip === 4) {             // beş köşeli yıldız biçimi
+      c = KONFETI[(Math.random() * KONFETI.length) | 0];
+      n = 30;
+      for (i = 0; i < n; i++) {
+        var u = i / n, kose = Math.floor(u * 10), f = u * 10 - kose;
+        var a0 = Math.PI / 2 + kose * Math.PI / 5, a1 = a0 + Math.PI / 5;
+        var r0 = (kose % 2) ? 0.45 : 1.0, r1 = (kose % 2) ? 1.0 : 0.45;
+        var px = Math.cos(a0) * r0 + (Math.cos(a1) * r1 - Math.cos(a0) * r0) * f, py = Math.sin(a0) * r0 + (Math.sin(a1) * r1 - Math.sin(a0) * r0) * f;
+        ii = yayF(x, y, 0.3, px * 6.0, py * 6.0, 0, 1.0, 0.7, 0.1, 1.0, 0.9, 0.45, 1, 0.5, 2.3, 1.0);
+        ADD.donh[ii] = 3;
+      }
+      halkaF(x, y, 0.3, 2.4, 0.4, 0.5 + 0.5 * c[0], 0.5 + 0.5 * c[1], 0.5 + 0.5 * c[2]);
+    } else fisekPatlat(x, y, true);
   }
   function onKavus(v) {
     kavusYildiz = (v && v.yildiz) | 0;
     var sonIdx = (typeof BOLUMLER !== 'undefined' && BOLUMLER && BOLUMLER.length) ? BOLUMLER.length - 1 : -1;
     kavusFinal = !!(v && sonIdx >= 0 && v.bolumIdx === sonIdx);
-    fisekT = 0.25; fisekSay = 0;
-    kavusSure = kavusFinal ? 7.4 : (kavusYildiz >= 5 ? 4.2 : KAVUS_T);
+    fisekT = 0.25; fisekSay = 0; finaleOldu = false; rkAkt.fill(0);
+    kavusSure = kavusFinal ? 11 : (kavusYildiz >= 5 ? 4.2 : KAVUS_T);
     var h = hedef(), x = pVar() ? P.x : h.x, y = pVar() ? P.y : h.y + 1;
     if (kavusYildiz >= 5 || kavusFinal) {          // 5 yıldız: gökkuşağı halkaları + iki yandan konfeti topu
       for (var gk = 0; gk < 3; gk++) {
@@ -1670,10 +2293,28 @@
         for (var kb = 0; kb < 14; kb++) {
           var kc5 = KONFETI[kb % KONFETI.length], ka = Math.PI / 2 - yn * (0.35 + Math.random() * 0.5), ks = 6 + Math.random() * 3.5;
           var kb5 = 0.16 + Math.random() * 0.07;
+          var kt5 = konfetiSec(kb, kb % 3 === 0); if (kt5 === 13) kb5 *= 1.6;
           var kx5 = yay(NOR, (x + h.x) * 0.5 + yn * 3.2, h.y + 0.3, 0.6, Math.cos(ka) * ks, Math.sin(ka) * ks, 0,
-            3.2 + Math.random() * 0.8, kb5, kb5, kc5[0], kc5[1], kc5[2], (kb % 3 === 0) ? 7 : 3, 4.2, 1.4, 0.96);
+            3.2 + Math.random() * 0.8, kb5, kb5, _kr, _kg, _kb, kt5, 4.2, 1.4, 0.96);
           NOR.donh[kx5] = (Math.random() - 0.5) * 7;
         }
+      }
+    }
+    if (v && v.tekAtis) {                         // tek uçuşta 5 yıldız: kısa, abartısız gökkuşağı pırıltısı
+      var kT = 1;
+      if (typeof camera !== 'undefined' && camera) kT = Math.max(0.35, Math.min(1, Math.abs(camera.position.z) * Math.tan((camera.fov || 45) * Math.PI / 360) / 10));
+      var tx = (x + h.x) * 0.5, ty = h.y + 1.3;
+      for (var tq = 0; tq < 14; tq++) {
+        var tc = GOKKUSAGI[tq % 6], ta = 0.12 * Math.PI + (tq / 13) * 0.76 * Math.PI;
+        var ti = yay(ADD, tx + Math.cos(ta) * 2.6 * kT, ty + Math.sin(ta) * 2.6 * kT, 0.8, Math.cos(ta) * 0.5 * kT, Math.sin(ta) * 0.5 * kT + 0.15, 0,
+          2.6, 0.62 * kT, 0.3 * kT, 0.45 + 0.55 * tc[0], 0.45 + 0.55 * tc[1], 0.45 + 0.55 * tc[2], 1, 0, 0.8, 0.95);
+        ADD.donh[ti] = (tq % 2 ? 1 : -1) * 3;
+      }
+      halka(tx, ty, 0.4 * kT, 3.4 * kT, 0.9, 0.85, 0.7, 1.0, 0.1);
+      halka(tx, ty, 0.4 * kT, 3.0 * kT, 0.9, 1.0, 0.85, 0.5, 0.6);
+      for (tq = 0; tq < 6; tq++) {                // yaydan yavaşça düşen gökkuşağı benekleri
+        var tc2 = GOKKUSAGI[tq], ta2 = 0.2 * Math.PI + (tq / 5) * 0.6 * Math.PI;
+        yay(NOR, tx + Math.cos(ta2) * 2.4 * kT, ty + Math.sin(ta2) * 2.4 * kT, 0.7, 0, -0.4 * kT, 0, 2.6, 0.22 * kT, 0.16 * kT, tc2[0], tc2[1], tc2[2], 7, 0, 0.3, 0.9);
       }
     }
     halka(x, y, 1.2, 3.0, 0.3, 1, 0.82, 0.35);            // hızla açılır, yüzleri örtmez
@@ -1708,45 +2349,68 @@
       var kAng = 0.42 + (i / 15) * 2.30 + (Math.random() - 0.5) * 0.22;
       var kSpd = 2.6 + Math.random() * 2.4;
       var kBoy = kPul ? (0.10 + Math.random() * 0.04) : (0.15 + Math.random() * 0.06);
+      var kTr = konfetiSec(i, kPul); if (kTr === 13) kBoy *= 1.6;
       var ki = yay(NOR, ox + (Math.random() - 0.5) * 1.8, h.y + 1.5 + Math.random() * 0.9, 0.45 + Math.random() * 1.0,
         Math.cos(kAng) * kSpd, Math.sin(kAng) * kSpd + 0.6, 0,
-        3.0 + Math.random() * 1.0, kBoy, kBoy, kc[0], kc[1], kc[2], kPul ? 7 : 3, 1.25, 1.8, 0.96);
+        3.0 + Math.random() * 1.0, kBoy, kBoy, _kr, _kg, _kb, kTr, 1.25, 1.8, 0.96);
       NOR.donh[ki] = (Math.random() - 0.5) * 6.5;
     }
   }
+  function finalYer(out, sol) {         // kadrajın üst %60'ı; yüzlerin hizasında yalnız iki yanlar
+    var ny = 0.0 + Math.random() * 0.4, nx;          // patlama yarıçapı ekranın ~%30'u: merkez 0,4'ü aşmaz, üst gösterge (%14) boş kalır
+    if (ny < 0.35) nx = (sol ? -1 : 1) * (0.45 + Math.random() * 0.45);
+    else nx = (sol ? -1 : 1) * Math.random() * 0.85;
+    ekranDunya(nx, ny, out);
+  }
   function kavusGuncelle(dt) {
+    var fin = kavusFinal && kavusSure > 0;
+    fBuy = fin ? 1.25 : 1; fOmur = fin ? 1.35 : 1;
     if (kavusSure <= 0) return;
     kavusSure -= dt;
     var h = hedef(), cx = pVar() ? P.x : h.x, ox = (cx + h.x) * 0.5;
     var yog = Math.max(0, Math.min(1, kavusSure / 1.5));   // son 1,5 sn'de yavaşça seyrelir; 3 sn'de biter
     yog = yog * yog * (3 - 2 * yog);
-    if (kavusFinal && kavusSure > 0.9) {        // son bölüm: başların çok üstünde peş peşe havai fişekler
+    if (kavusFinal && kavusSure > 0.7) {        // son bölüm: aşağıdan yükselen roketler, çeşit çeşit havai fişek, sonda büyük final
       fisekT -= dt;
-      if (fisekT <= 0) {
+      // ekranın üst yarısında, iki yanda patlasın (yüzlerin üstünde değil)
+      var cxF = ox, cyF = h.y + 3, yarH = 4, yarW = 6;
+      if (typeof camera !== 'undefined' && camera) {
+        yarH = Math.abs(camera.position.z) * Math.tan((camera.fov || 45) * Math.PI / 360);
+        yarW = yarH * (camera.aspect || 1.4);
+        cxF = camera.position.x; cyF = camera.position.y;
+      }
+      // yerleşim KAMERANIN gördüğü kareden: ekranın üst %60'ı (NDC y -0.15..0.55; üst gösterge payı bırakılır)
+      ekranDunya(0, 1, _fA); ekranDunya(0, -1, _fB);
+      var ekH = Math.abs(_fA.y - _fB.y) || 8;
+      fOl = Math.max(0.6, Math.min(1.8, ekH / 8));
+      var dar = yarW < yarH;
+      if (fisekT <= 0 && kavusSure > 2.6) {
         fisekSay++;
-        fisekT = 0.28 + Math.random() * 0.18;
-        // ekranın üst yarısında, iki yanda patlasın (yüzlerin üstünde değil)
-        var cxF = ox, cyF = h.y + 3, yarH = 4, yarW = 6;
-        if (typeof camera !== 'undefined' && camera) {
-          yarH = Math.abs(camera.position.z) * Math.tan((camera.fov || 45) * Math.PI / 360);
-          yarW = yarH * (camera.aspect || 1.4);
-          cxF = camera.position.x; cyF = camera.position.y;
-        }
-        var yanF = (fisekSay % 2 ? -1 : 1) * yarW * (0.32 + Math.random() * 0.38);
-        fisekPatlat(cxF + yanF, cyF + yarH * (0.45 + Math.random() * 0.28), fisekSay % 4 === 0);
+        fisekT = (dar ? 0.24 : 0.2) + Math.random() * 0.1;   // her an karede 3-5 patlama
+        finalYer(_fA, fisekSay % 2 === 1);
+        if (fisekSay % 3 === 0) { ekranDunya(0, -0.75, _fB); roketAt(_fA.x, _fB.y, _fA.y, fisekSay % 5); }
+        else fisekSekil(_fA.x, _fA.y, fisekSay % 5);
+      }
+      if (!finaleOldu && kavusSure <= 2.6) {    // büyük final: iki dalga, yedi patlama birden
+        finaleOldu = true;
+        for (var fk = 0; fk < 7; fk++) { ekranDunya(-0.78 + fk * 0.26, 0.08 + 0.24 * (fk % 2), _fA); fisekSekil(_fA.x, _fA.y, fk % 5); }
+        for (fk = 0; fk < 4; fk++) { ekranDunya(-0.6 + fk * 0.4, -0.75, _fB); ekranDunya(-0.6 + fk * 0.4, 0.36 - 0.2 * (fk % 2), _fA); roketAt(_fA.x, _fB.y, _fA.y, (fk + 2) % 5); }
       }
     }
+    roketGuncelle(dt);
     var sonA = 0.45 + 0.55 * yog;
     var n = 0;
-    if (Math.random() < 36 * dt * yog) n++;
-    if (Math.random() < 36 * dt * yog) n++;
+    var yagis = kavusFinal ? 11 : 36;            // finalde gök fişeklere kalsın: konfeti biraz seyrek
+    if (Math.random() < yagis * dt * yog) n++;
+    if (Math.random() < yagis * dt * yog) n++;
     for (var i = 0; i < n; i++) {
       var c = KONFETI[(Math.random() * KONFETI.length) | 0];
       var pul = Math.random() < 0.36;
       var boy = pul ? (0.10 + Math.random() * 0.05) : (0.15 + Math.random() * 0.07);
+      var kTr2 = konfetiSec((Math.random() * 30) | 0, pul); if (kTr2 === 13) boy *= 1.6;
       var ii = yay(NOR, cx + (Math.random() - 0.5) * 13, h.y + 5.8 + Math.random() * 4.2, 0.3 + Math.random() * 1.2,
         (Math.random() - 0.5) * 1.4, -0.35 - Math.random() * 0.75, 0,
-        3.4 + Math.random() * 1.1, boy, boy, c[0], c[1], c[2], pul ? 7 : 3,
+        3.4 + Math.random() * 1.1, boy, boy, _kr, _kg, _kb, kTr2,
         1.15 + Math.random() * 0.45, 1.65 + Math.random() * 0.35, sonA);
       NOR.donh[ii] = (Math.random() - 0.5) * 6.5;
     }
@@ -1774,17 +2438,24 @@
       ADD.donh[j] = 1.4;
     }
   }
-  function onYeniden() {
+  var _tut = new Uint8Array(YN);
+  function onYeniden(v) {
     yildizYerleri();
-    for (var i = 0; i < yAktifSay; i++) { if (yDurum[i] < 1) { yDurum[i] = 1; yGecik[i] = 0.15 + i * 0.12; } uAkt[i] = 0; }
+    // "bir daha" birikimi: bu bölümde önceden alınmış yıldızlar geri gelmez (yalnız eksikler parlar)
+    for (var t0 = 0; t0 < YN; t0++) _tut[t0] = 0;
+    if (v && v.birikim && v.alinan && v.alinan.length) {
+      for (var t1 = 0; t1 < v.alinan.length; t1++) { var ai = v.alinan[t1] | 0; if (ai >= 0 && ai < YN) _tut[ai] = 1; }
+    }
+    for (var i = 0; i < yAktifSay; i++) { if (_tut[i]) { yDurum[i] = 0; yYol[i] = 0; yYak[i] = 0; continue; } if (yDurum[i] < 1) { yDurum[i] = 1; yGecik[i] = 0.15 + i * 0.12; } uAkt[i] = 0; yPop[i] = 0; uBes[i] = 0; }
     for (i = 0; i < bhSay; i++) bhGec[i] = 0;
-    kavusSure = 0; yolHedef = 0; izSay = 0; oncSay = 0; oncG = 0; kaySay = 0; kanatIzSure = 0; kanatPirSay = 0; kanatTozSay = 0;
+    kavusSure = 0; yolHedef = 0; izSay = 0; oncSay = 0; oncG = 0; kaySay = 0; kanatIzSure = 0; kanatPirSay = 0; kanatTozSay = 0; kosT = -1; bPat.fill(0);
   }
   function onBolum(b) {
+    kosT = -1; bPat.fill(0);
     bolumAyarla(b);
     yildizYerleri();
     for (var i = 0; i < yAktifSay; i++) {
-      yDurum[i] = 1; yOlcek[i] = 0.01; yGecik[i] = 0.1 + i * 0.1; yYak[i] = 0; uAkt[i] = 0;
+      yDurum[i] = 1; yOlcek[i] = 0.01; yGecik[i] = 0.1 + i * 0.1; yYak[i] = 0; uAkt[i] = 0; yPop[i] = 0; uBes[i] = 0;
     }
     kavusSure = 0; yolHedef = 0; izSay = 0; oncSay = 0; oncG = 0; kaySay = 0; kanatIzSure = 0; kanatPirSay = 0; kanatTozSay = 0;
   }
@@ -1807,12 +2478,14 @@
   window.efektKur = function () {
     if (kuruldu) return; kuruldu = true;
     if (typeof THREE === 'undefined' || typeof scene === 'undefined' || !scene) { kuruldu = false; return; }
+    _fA = new THREE.Vector3(); _fB = new THREE.Vector3();
     _m4 = new THREE.Matrix4(); _v3a = new THREE.Vector3(); _v3b = new THREE.Vector3(); _q = new THREE.Quaternion();
     _s3 = new THREE.Vector3(); _e = new THREE.Euler(); _v2 = new THREE.Vector2(); _renk = new THREE.Color();
     ana = new THREE.Group(); ana.name = 'efekt';
 
-    ADD = havuz(520, true, true); ADD.bas = 45; ADD.imlec = 45;
-    NOR = havuz(400, false, true); NOR.bas = SN; NOR.imlec = SN;
+    ADD = havuz(900, true, true); ADD.bas = 49; ADD.imlec = 49;   // 45..48: "buna değeceksin" baloncuk parlaması
+    NOR = havuz(440, false, true); NOR.bas = SN + YN; NOR.imlec = SN + YN;   // SN..SN+4: parlak zeminde yıldızların sıcak hâlesi
+    for (var hh = 0; hh < YN; hh++) { var n3 = (SN + hh) * 3; NOR.tur[SN + hh] = 0; NOR.renk[n3] = 0.96; NOR.renk[n3 + 1] = 0.46; NOR.renk[n3 + 2] = 0.10; }
     YOL = havuz(YOL_TOP, false, false);
     for (var k = 0; k < YOL_N; k++) YOL.tur[k] = 6;
     YOL.tur[I_INIS] = 9; YOL.tur[I_INIS_Y] = 1;
@@ -1830,6 +2503,11 @@
     yildizMesh.frustumCulled = false; yildizMesh.renderOrder = 2;
     for (var i = 0; i < YN; i++) { yDurum[i] = 1; yOlcek[i] = 1; }
     _m4.makeScale(0, 0, 0); for (i = 0; i < YN * 2; i++) yildizMesh.setMatrixAt(i, _m4);
+    // ince koyu-amber kenar (karda ve açık gökte de yıldızlar net seçilsin): aynı örnek matrislerini paylaşır
+    var kg = yildizGeo(); kg.scale(1.16, 1.16, 1.0); kg.translate(0, 0, -0.04);
+    kenarMesh = new THREE.InstancedMesh(kg, new THREE.MeshBasicMaterial({ color: 0x8a3f06, side: THREE.BackSide }), YN * 2);
+    kenarMesh.instanceMatrix = yildizMesh.instanceMatrix;
+    kenarMesh.frustumCulled = false; kenarMesh.renderOrder = 1;
 
     var hg = new THREE.PlaneGeometry(2, 2);
     var hm = new THREE.ShaderMaterial({
@@ -1850,7 +2528,7 @@
     izKur(); izMesh.renderOrder = 3;
     huzmeKur();
 
-    ana.add(huzmeMesh, ADD.obj, NOR.obj, yildizMesh, halkaMesh, izMesh, YOL.obj);
+    ana.add(huzmeMesh, ADD.obj, NOR.obj, kenarMesh, yildizMesh, halkaMesh, izMesh, YOL.obj);
     scene.add(ana);
 
     if (typeof OLAY !== 'undefined' && OLAY && OLAY.on) {
@@ -1860,6 +2538,8 @@
       OLAY.on('halka', onHalkaGec); OLAY.on('halkaGec', onHalkaGec);
       OLAY.on('izKaydet', onIzKaydet); OLAY.on('gucSeviye', onGucSeviye); OLAY.on('salla', onSalla);
       OLAY.on('kanatBos', onKanatBos); OLAY.on('ruzgar', onRuzgar);
+      OLAY.on('baloncuk', onBaloncuk); OLAY.on('esinti', onEsinti); OLAY.on('silkin', onSilkin); OLAY.on('havaDindi', onHavaDindi);
+      OLAY.on('kanatSira', onKanatSira); OLAY.on('bilboKos', onBilboKos);
     }
   };
 
@@ -1908,6 +2588,9 @@
     kavusGuncelle(dt);
     izGuncelle(dt, t);
     tamCekGuncelle(dt);
+    zeminIzGuncelle(dt);
+    baloncukYolGuncelle(dt, t);
+    kosGuncelle(dt);
     havuzGuncelle(ADD, dt, t); havuzYukle(ADD);
     havuzGuncelle(NOR, dt, t); havuzYukle(NOR);
     yolGuncelle(dt, t);

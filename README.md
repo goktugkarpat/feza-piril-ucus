@@ -2,7 +2,7 @@
 
 5 yaşındaki Feza için yapılmış, masal kitabı tarzında bir uçuş oyunu. Mor bebek ejderha **Pırıl** uçmayı yeni öğreniyor:
 iki ağaç arasındaki yaprak salıncaktan fırlıyor, yıldızları topluyor ve çayırın öbür ucunda piknik örtüsünde bekleyen köpeği
-**Bilbo**'ya kavuşuyor. 25 bölüm var. Kaybetmek yoktur: Pırıl ıskalarsa çimene yuvarlanır, silkinir, güler ve salıncağa döner.
+**Bilbo**'ya kavuşuyor. 40 bölüm var; yağmurlu ormandan karlı köye, sakura gecesinden ay yüzeyine her biri başka bir yerde geçer. Kaybetmek yoktur: Pırıl ıskalarsa çimene yuvarlanır, silkinir, güler ve salıncağa döner.
 Feza okuma bilmediği için her şey resimlerle, simgelerle ve anlatıcının sesiyle anlatılır.
 
 **Oyna:** https://goktugkarpat.github.io/feza-piril-ucus/
@@ -35,8 +35,11 @@ Feza okuma bilmediği için her şey resimlerle, simgelerle ve anlatıcının se
 
 ![Çekerken yol noktaları ve parlayan yıldızlar](ekran/cekis.jpg)
 
-Doğru çekiş bulunduğunda her bölümde **tek atışta beş yıldızın hepsi** toplanıp Bilbo'ya kavuşulabilir. Yıldız toplamak isteğe bağlıdır;
-Bilbo'ya kavuşmak bölümü bitirmek için yeter.
+Yıldızlar bölüm içinde **birikir**: Pırıl ıskalasa da, üç yıldızla kavuşup mor ↻ düğmesine basılsa da alınan yıldızlar kalır;
+Feza yalnız eksik yıldızları toplar. Beşi tamamlanınca altın madalya çıkar. Beş yıldızın hepsini **tek uçuşta** toplayana ise
+gökkuşağı renkli özel madalya verilir; doğru çekiş bulunduğunda bu her bölümde mümkündür.
+
+Pırıl Bilbo'nun biraz önüne ya da arkasına inerse **Bilbo sevinçle ona koşar** ve kavuşma sayılır.
 
 ## Yolda Pırıl'a yardım edenler
 
@@ -45,6 +48,8 @@ Bilbo'ya kavuşmak bölümü bitirmek için yeter.
 - **Nilüfer** — derenin üstünden atlatır.
 - **Rüzgâr** — içinden geçince yukarı taşır.
 - **Çiçekli halka** — içinden geçince hızlandırır.
+- **Baloncuk** (26. bölümden itibaren) — değince "hop" diye yukarı ve ileri fırlatır.
+- **Esinti** (27. bölümden itibaren) — arkadan esen rüzgâr şeridi; içinden geçerken ileri iter.
 
 Her biri ilk kez göründüğü bölümde tek başına ve kolay bir yerde tanıtılır; anlatıcı da bir kez söyler.
 
@@ -52,28 +57,49 @@ Her biri ilk kez göründüğü bölümde tek başına ve kolay bir yerde tanıt
 
 ## Bölümler
 
-Bölümler patika gibi kıvrılan resimli bir **haritada** durur; yolun sonunda Bilbo bekler. Harita başlıktaki mor düğmeden ve oyun içinde
+Bölümler patika gibi kıvrılan, parmakla kaydırılan resimli bir **haritada** durur; yolun sonunda Bilbo bekler. Harita başlıktaki mor düğmeden ve oyun içinde
 sol üstteki küçük düğmeden açılır. Her bölümün altında kazanılan yıldızlar görünür; kilitli bölüme dokununca yalnızca tatlı bir sallanma olur.
 
 ![Bölüm haritası](ekran/harita.jpg)
 
-| | Bölüm | Kanat | | Bölüm | Kanat |
-|---|---|---|---|---|---|
-| 1 | İlk Uçuş | – | 14 | Kristal Vadi | 3 |
-| 2 | Mantar Trambolini | – | 15 | Pamuk Şeker Gökyüzü | 3 |
-| 3 | İlk Kanat Çırpışı | 1 | 16 | Akçaağaç Ormanı | 3 |
-| 4 | Yumuşak Bulut Yastığı | 1 | 17 | Kuzey Işıkları | 3 |
-| 5 | Nilüferli Dere | 1 | 18 | Yüzen Masal Adaları | 3 |
-| 6 | Lavanta Rüzgârı | 1 | 19 | Altın Şafak Tapınağı | 3 |
-| 7 | Gökkuşağı Halkaları | 1 | 20 | Dev Mantar | 3 |
-| 8 | Çifte Kanat ve Yüksek Uçuş | 2 | 21 | Nilüfer Atlamaca | 3 |
-| 9 | Büyük Parkur | 2 | 22 | Halka Tüneli | 3 |
-| 10 | Yıldızlı Gece Şenliği | 2 | 23 | Gün Batımı Kanyonu | 4 |
-| 11 | Kiraz Çiçeği Bahçesi | 2 | 24 | Rüzgâr Merdiveni | 4 |
-| 12 | Ayçiçeği Tarlası | 2 | 25 | Büyük Yıldız Şenliği | 4 |
-| 13 | Mercan Kıyısı | 2 | | | |
+| | Bölüm | | Bölüm |
+|---|---|---|---|
+| 1 | İlk Uçuş | 21 | Nilüfer Atlamaca |
+| 2 | Mantar Trambolini | 22 | Halka Tüneli |
+| 3 | İlk Kanat Çırpışı | 23 | Gün Batımı Kanyonu |
+| 4 | Yumuşak Bulut Yastığı | 24 | Rüzgâr Merdiveni |
+| 5 | Nilüferli Dere | 25 | Büyük Yıldız Şenliği |
+| 6 | Lavanta Rüzgârı | 26 | Yağmurlu Orman |
+| 7 | Gökkuşağı Halkaları | 27 | Karlı Köy |
+| 8 | Çifte Kanat ve Yüksek Uçuş | 28 | Sakura Gecesi |
+| 9 | Büyük Parkur | 29 | Çöl Vahası |
+| 10 | Yıldızlı Gece Şenliği | 30 | Fırtına Tepesi |
+| 11 | Kiraz Çiçeği Bahçesi | 31 | Balkabağı Tarlası |
+| 12 | Ayçiçeği Tarlası | 32 | Buzul Gölü |
+| 13 | Mercan Kıyısı | 33 | Palmiye Kumsalı |
+| 14 | Kristal Vadi | 34 | Sisli Bambu Ormanı |
+| 15 | Pamuk Şeker Gökyüzü | 35 | Şeker Diyarı |
+| 16 | Akçaağaç Ormanı | 36 | Ay Yüzeyi |
+| 17 | Kuzey Işıkları | 37 | Lale Tarlaları |
+| 18 | Yüzen Masal Adaları | 38 | Işıldayan Orman |
+| 19 | Altın Şafak Tapınağı | 39 | Gök Şatosu |
+| 20 | Dev Mantar | 40 | Kış Gecesi Şenliği |
 
-Her bölümün kendi görünüşü vardır: çayır, lavanta tarlası, kiraz bahçesi, mercan kıyısı, kristal vadi, sonbahar ormanı, kuzey ışıklı gece…
+Kanat hakkı bölümlere göre artar: ilk iki bölümde yok, sonra 1, 2, 3 ve en çok 4.
+
+26. bölümden sonrası yeni yerlerdir ve her birinin kendi havası vardır: yağmur, kar, savrulan sonbahar yaprakları, sakura
+yaprakları, sis, şeker serpintisi, yıldız tozu. Fırtına Tepesi'nde uzakta yumuşak bir şimşek çakar ve tatlı bir gök gürültüsü
+duyulur; Pırıl korkmaz, Bilbo'ya kavuşunca güneş açar ve gökkuşağı çıkar. Pırıl ile Bilbo yere göre giyinir: karda atkı ve bere,
+yağmurda sarı şapka, çölde hasır şapka, ayda uzay başlığı.
+
+| | |
+|---|---|
+| ![Karlı Köy](ekran/karli_koy.jpg) | ![Fırtına Tepesi](ekran/firtina_tepesi.jpg) |
+| ![Sakura Gecesi](ekran/sakura_gecesi.jpg) | ![Ay Yüzeyi](ekran/ay_yuzeyi.jpg) |
+
+![Gök Şatosu](ekran/gok_satosu.jpg)
+
+Eski bölümlerin de kendi görünüşü vardır: çayır, lavanta tarlası, kiraz bahçesi, mercan kıyısı, kristal vadi, sonbahar ormanı, kuzey ışıklı gece…
 Son bölüm havai fişekli büyük bir kutlamayla biter; ardından toplam yıldızları gösteren kupa kartı gelir.
 
 ![Kavuşma](ekran/kavusma.jpg)
@@ -81,9 +107,9 @@ Son bölüm havai fişekli büyük bir kutlamayla biter; ardından toplam yıld�
 ## Ebeveyn notları
 
 - **Kaybetmek, süre ya da can yok.** Iskalayınca Pırıl komikçe yuvarlanır ve salıncağa döner; ceza yoktur.
-- **Gizli yardım:** art arda ıskalarda yıldızlar ve Bilbo, yakından geçen Pırıl'ı biraz daha güçlü çeker.
+- **Gizli yardım:** art arda denemelerde yıldızlar ve Bilbo, yakından geçen Pırıl'ı biraz daha güçlü çeker; erken ya da geç yapılan kanat dokunuşu da boşa gitmez.
 - **Yazı yok:** ekranda oyunun adı dışında sözcük yoktur. İpuçları resimlidir: çekmeyi gösteren el, havada dokunmayı gösteren kanat resmi.
-- **Ses:** anlatım doğal bir Türkçe kadın sesiyle önceden kaydedildi (29 kayıt); müzik ve efektler oyunun içinde üretilir.
+- **Ses:** anlatım doğal bir Türkçe kadın sesiyle önceden kaydedildi (50 kayıt); müzik ve efektler oyunun içinde üretilir.
   Övgü ara sıra ve çeşitlidir.
 - **İlerleme iPad'de saklanır:** açılan bölümler ve kazanılan yıldızlar oyunu kapatınca kaybolmaz.
 - **Küçük eller için:** sayfa kaymaz, yakınlaşmaz, uzun basınca menü açılmaz; ikinci bir parmak oyunu bozmaz. Yatay ve dikey tutuşta oynanır.
