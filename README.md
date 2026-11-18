@@ -9,52 +9,6 @@ Feza okuma bilmediği için her şey resimlerle, simgelerle ve anlatıcının se
 
 ![Başlık ekranı](ekran/baslik.jpg)
 
-## Nasıl açılır
-
-- **İnternette:** https://goktugkarpat.github.io/feza-piril-ucus/
-- **iPad'de uygulama gibi (önerilen):**
-  1. iPad'de **Safari**'yi aç ve yukarıdaki adrese git.
-  2. Üstteki **Paylaş** düğmesine dokun (kutudan çıkan ok).
-  3. Listeden **Ana Ekrana Ekle**'yi seç, sonra **Ekle**'ye dokun.
-  4. Ana ekranda Pırıl'ın simgesi belirir; ona dokununca oyun tam ekran, uygulama gibi açılır.
-  5. Bir kez açıldıktan sonra **internetsiz de çalışır** (uçakta, arabada).
-- **Bilgisayarda:** klasördeki `index.html` dosyasına çift tıkla. Kurulum gerekmez.
-- **Sessiz açma:** adresin sonuna `?sessiz` ekle.
-- **Yeni sürüm gelince:** oyunu kapatıp yeniden aç; internet varken kendiliğinden güncellenir.
-
-## Nasıl oynanır
-
-1. Açılışta büyük turuncu ▶ düğmesine dokun. Oyun kaldığı bölümden devam eder.
-2. Parmağını ekranın **herhangi bir yerine** koy, **geriye ve aşağıya doğru çek**, sonra bırak. Ne kadar çok çekersen Pırıl o kadar
-   uzağa uçar.
-3. Çekerken iri noktalar Pırıl'ın gideceği yolu gösterir. Yolun üstünden geçtiği yıldızlar **parlayıp büyür**: "bu atış bunları alır".
-4. 3. bölümden itibaren Pırıl havadayken ekrana dokunursan **kanat çırpar**, yükselir ve kısa süre süzülür. Kaç kanat hakkı olduğu
-   sağ üstte resimle görünür.
-5. Bilbo'ya kavuşunca kutlama başlar. Yeşil ▶ sonraki bölüme geçer, mor ↻ aynı bölümü bir daha oynatır.
-   Beş yıldızın beşi de toplandıysa altın madalya çıkar.
-
-![Çekerken yol noktaları ve parlayan yıldızlar](ekran/cekis.jpg)
-
-Yıldızlar bölüm içinde **birikir**: Pırıl ıskalasa da, üç yıldızla kavuşup mor ↻ düğmesine basılsa da alınan yıldızlar kalır;
-Feza yalnız eksik yıldızları toplar. Beşi tamamlanınca altın madalya çıkar. Beş yıldızın hepsini **tek uçuşta** toplayana ise
-gökkuşağı renkli özel madalya verilir; doğru çekiş bulunduğunda bu her bölümde mümkündür.
-
-Pırıl Bilbo'nun biraz önüne ya da arkasına inerse **Bilbo sevinçle ona koşar** ve kavuşma sayılır.
-
-## Yolda Pırıl'a yardım edenler
-
-- **Mantar** — üstüne düşünce yukarı zıplatır.
-- **Bulut** — yumuşakça sektirir.
-- **Nilüfer** — derenin üstünden atlatır.
-- **Rüzgâr** — içinden geçince yukarı taşır.
-- **Çiçekli halka** — içinden geçince hızlandırır.
-- **Baloncuk** (26. bölümden itibaren) — değince "hop" diye yukarı ve ileri fırlatır.
-- **Esinti** (27. bölümden itibaren) — arkadan esen rüzgâr şeridi; içinden geçerken ileri iter.
-
-Her biri ilk kez göründüğü bölümde tek başına ve kolay bir yerde tanıtılır; anlatıcı da bir kez söyler.
-
-![Uçarken kanat ipucu ve çiçekli halka](ekran/ucus.jpg)
-
 ## Bölümler
 
 Bölümler patika gibi kıvrılan, parmakla kaydırılan resimli bir **haritada** durur; yolun sonunda Bilbo bekler. Harita başlıktaki mor düğmeden ve oyun içinde
@@ -104,7 +58,53 @@ Son bölüm havai fişekli büyük bir kutlamayla biter; ardından toplam yıld�
 
 ![Kavuşma](ekran/kavusma.jpg)
 
-## Ebeveyn notları
+## Yolda Pırıl'a yardım edenler
+
+- **Mantar** — üstüne düşünce yukarı zıplatır.
+- **Bulut** — yumuşakça sektirir.
+- **Nilüfer** — derenin üstünden atlatır.
+- **Rüzgâr** — içinden geçince yukarı taşır.
+- **Çiçekli halka** — içinden geçince hızlandırır.
+- **Baloncuk** (26. bölümden itibaren) — değince "hop" diye yukarı ve ileri fırlatır.
+- **Esinti** (27. bölümden itibaren) — arkadan esen rüzgâr şeridi; içinden geçerken ileri iter.
+
+Her biri ilk kez göründüğü bölümde tek başına ve kolay bir yerde tanıtılır; anlatıcı da bir kez söyler.
+
+![Uçarken kanat ipucu ve çiçekli halka](ekran/ucus.jpg)
+
+## Nasıl açılır
+
+- **İnternette:** https://goktugkarpat.github.io/feza-piril-ucus/
+- **iPad'de uygulama gibi (önerilen):**
+  1. iPad'de **Safari**'yi aç ve yukarıdaki adrese git.
+  2. Üstteki **Paylaş** düğmesine dokun (kutudan çıkan ok).
+  3. Listeden **Ana Ekrana Ekle**'yi seç, sonra **Ekle**'ye dokun.
+  4. Ana ekranda Pırıl'ın simgesi belirir; ona dokununca oyun tam ekran, uygulama gibi açılır.
+  5. Bir kez açıldıktan sonra **internetsiz de çalışır** (uçakta, arabada).
+- **Bilgisayarda:** klasördeki `index.html` dosyasına çift tıkla. Kurulum gerekmez.
+- **Sessiz açma:** adresin sonuna `?sessiz` ekle.
+- **Yeni sürüm gelince:** oyunu kapatıp yeniden aç; internet varken kendiliğinden güncellenir.
+
+## Nasıl oynanır
+
+1. Açılışta büyük turuncu ▶ düğmesine dokun. Oyun kaldığı bölümden devam eder.
+2. Parmağını ekranın **herhangi bir yerine** koy, **geriye ve aşağıya doğru çek**, sonra bırak. Ne kadar çok çekersen Pırıl o kadar
+   uzağa uçar.
+3. Çekerken iri noktalar Pırıl'ın gideceği yolu gösterir. Yolun üstünden geçtiği yıldızlar **parlayıp büyür**: "bu atış bunları alır".
+4. 3. bölümden itibaren Pırıl havadayken ekrana dokunursan **kanat çırpar**, yükselir ve kısa süre süzülür. Kaç kanat hakkı olduğu
+   sağ üstte resimle görünür.
+5. Bilbo'ya kavuşunca kutlama başlar. Yeşil ▶ sonraki bölüme geçer, mor ↻ aynı bölümü bir daha oynatır.
+   Beş yıldızın beşi de toplandıysa altın madalya çıkar.
+
+![Çekerken yol noktaları ve parlayan yıldızlar](ekran/cekis.jpg)
+
+Yıldızlar bölüm içinde **birikir**: Pırıl ıskalasa da, üç yıldızla kavuşup mor ↻ düğmesine basılsa da alınan yıldızlar kalır;
+Feza yalnız eksik yıldızları toplar. Beşi tamamlanınca altın madalya çıkar. Beş yıldızın hepsini **tek uçuşta** toplayana ise
+gökkuşağı renkli özel madalya verilir; doğru çekiş bulunduğunda bu her bölümde mümkündür.
+
+Pırıl Bilbo'nun biraz önüne ya da arkasına inerse **Bilbo sevinçle ona koşar** ve kavuşma sayılır.
+
+## Ebeveyn için notlar
 
 - **Kaybetmek, süre ya da can yok.** Iskalayınca Pırıl komikçe yuvarlanır ve salıncağa döner; ceza yoktur.
 - **Gizli yardım:** art arda denemelerde yıldızlar ve Bilbo, yakından geçen Pırıl'ı biraz daha güçlü çeker; erken ya da geç yapılan kanat dokunuşu da boşa gitmez.
@@ -114,8 +114,10 @@ Son bölüm havai fişekli büyük bir kutlamayla biter; ardından toplam yıld�
 - **İlerleme iPad'de saklanır:** açılan bölümler ve kazanılan yıldızlar oyunu kapatınca kaybolmaz.
 - **Küçük eller için:** sayfa kaymaz, yakınlaşmaz, uzun basınca menü açılmaz; ikinci bir parmak oyunu bozmaz. Yatay ve dikey tutuşta oynanır.
 - **Hız:** M1 iPad Pro'da akıcı çalışacak biçimde hafif tutuldu.
+- **GitHub'a göndermek:** klasördeki `yayinla.command` dosyasına çift tıkla. Kurulum ve derleme gerekmez; her şey bu klasördedir.
 
-## Dosyalar
+## Yapım
 
-Kurulum ve derleme gerekmez; her şey bu klasördedir. Çalışma notları `CLAUDE.md` dosyasındadır.
-GitHub'a göndermek için klasördeki `yayinla.command` dosyasına çift tıklamak yeter.
+Bu oyun, Feza'nın babası **Göktuğ Karpat** (@goktugkarpat) ile yapay zekâ yardımcısı **Claude** (Anthropic) birlikte çalışarak yapılmıştır.
+Fikirler ve kararlar ailenindir; kod, çizimler, bölüm tasarımları ve seslendirme düzenlemeleri Claude ile birlikte yazılmıştır.
+Oyun yalnızca Feza için, kâr amacı olmadan yapılmış bir aile projesidir.
