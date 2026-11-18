@@ -118,6 +118,6 @@ Pırıl Bilbo'nun biraz önüne ya da arkasına inerse **Bilbo sevinçle ona ko�
 
 ## Yapım
 
-Bu oyun, Feza'nın babası **Göktuğ Karpat** (@goktugkarpat) ile yapay zekâ yardımcısı **Claude** (Anthropic) birlikte çalışarak yapılmıştır.
-Fikirler ve kararlar ailenindir; kod, çizimler, bölüm tasarımları ve seslendirme düzenlemeleri Claude ile birlikte yazılmıştır.
+Bu oyun, Feza'nın babası **Göktuğ Karpat** (@goktugkarpat) ile yapay zekâ yardımcıları **Claude Code** (Anthropic), **Codex** (OpenAI) ve **Antigravity** (Google) birlikte çalışarak yapılmıştır.
+Fikirler ve kararlar ailenindir; kod, çizimler, bölüm tasarımları ve seslendirme düzenlemeleri bu yardımcılarla birlikte yazılmıştır.
 Oyun yalnızca Feza için, kâr amacı olmadan yapılmış bir aile projesidir.
