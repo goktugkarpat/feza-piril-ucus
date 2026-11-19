@@ -307,7 +307,10 @@ const DY_BIYOMLAR = [
 // Anlatım: scratchpad/notlar/ucus2_ek_api.md. Eklenti yoksa ya da hata verirse güvenli eski biyoma düşülür.
 if (typeof window !== 'undefined') window.DY_EK = window.DY_EK || {};
 // Eklentisi henüz yüklenmemiş yeni biyomlar için en yakın eski görünüş
-const DY_EK_YEDEK = { 21: 5, 22: 8, 23: 10, 24: 9, 25: 3, 26: 16, 27: 8, 28: 19, 29: 18, 30: 15, 31: 17, 32: 7, 33: 17, 34: 4, 35: 20 };
+const DY_EK_YEDEK = {
+  21: 5, 22: 8, 23: 10, 24: 9, 25: 3, 26: 16, 27: 8, 28: 19, 29: 18, 30: 15, 31: 17, 32: 7, 33: 17, 34: 4, 35: 20,
+  36: 18, 37: 1, 38: 6, 39: 13, 40: 15, 41: 5, 42: 11, 43: 15, 44: 10, 45: 20
+};
 function dyEk(n) {
   const E = (typeof window !== 'undefined' && window.DY_EK) ? window.DY_EK : null;
   const e = E ? E[n] : null;

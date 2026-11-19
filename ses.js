@@ -41,7 +41,7 @@ const SES = (() => {
     ucluKanat: 'Üç kez kanat çırpabilirsin! Gökyüzünde süzül!',
     ucusUstasi: 'Pırıl artık gerçek bir uçuş ustası! Haydi Bîlbo\'ya!',
     bolum20: 'İşte büyük final! Yıldızların arasında Bîlbo\'ya uçalım!',
-    // 2. tur: yeni ortamların ilk açılışı (biyom 21–35 → ortam26–ortam40), yeni yardımcılar
+    // 2. tur: yeni ortamların ilk açılışı (biyom 21–45 → ortam26–ortam50), yeni yardımcılar
     ortam26: 'Yağmur yağıyor! Pırıl ıslanmayı çok seviyor.',
     ortam27: 'Her yer bembeyaz! Kar yağıyor.',
     ortam28: 'Pembe çiçekler ay ışığında dans ediyor.',
@@ -56,11 +56,22 @@ const SES = (() => {
     ortam37: 'Yağmurdan sonra gökkuşağı çıktı.',
     ortam38: 'Bu orman geceleri ışıl ışıl parlıyor.',
     ortam39: 'Bulutların üstündeyiz! Ne kadar yüksek.',
-    ortam40: 'Kış şenliğine hoş geldin! Son uçuş, büyük uçuş.',
+    ortam40: 'Kış şenliğine hoş geldin! Işıklar pırıl pırıl parlıyor.',
+    ortam41: 'Vay, gökyüzü rengârenk balonlarla dolu! Haydi aralarından uçalım.',
+    ortam42: 'Müzik çayırına geldik! Davullardan zıplayıp notalarla dans edelim.',
+    ortam43: 'Bak bak, kocaman yel değirmenleri dönüyor! Rüzgârla yükselelim.',
+    ortam44: 'Suyun altına daldık! Minik balıklar ve inciler arasında yüzelim.',
+    ortam45: 'Oyuncak diyarına hoş geldin! Renkli küplerin üstünden sıçrayalım.',
+    ortam46: 'Şırıl şırıl şelale akıyor! Nilüferlerden sekip gökkuşağına uçalım.',
+    ortam47: 'Her şey kâğıttan katlanmış! Kâğıt kayıklardan sekip turnalarla süzülelim.',
+    ortam48: 'Bak bak, kocaman deniz feneri ışık saçıyor! Yelkenlilerin üstünden uçalım.',
+    ortam49: 'Yıldız gözlemevine vardık! Gezegen halkalarının içinden süzülelim.',
+    ortam50: 'Büyük karnavala hoş geldin! Ellinci bölüm, en büyük uçuş başlıyor!',
     gunesacti: 'Bak, güneş açtı!',
     baloncuk: 'Baloncuğa değ, seni yukarı fırlatsın!',
     esinti: 'Rüzgâr arkadan itiyor, hızlan!',
     kirkbitti: 'Kırk bölümün hepsini bitirdin! Sen gerçek bir uçuş ustasısın.',
+    ellibitti: 'Elli bölümün hepsini bitirdin! Sen harika bir gökyüzü kahramanısın!',
     tekatis: 'Hepsini tek uçuşta topladın! Harikasın!',
     kalanyildiz: 'Kalan yıldızları da toplayalım mı?'
   };
@@ -515,6 +526,8 @@ const SES = (() => {
   };
   function ortamSec(b) {
     if (!b || typeof b !== 'object') return null;
+    const by = b.biyom | 0;
+    if (by === 39 || by === 43) return 'dalga';             // sualtı ve deniz feneri: dalgalar
     const h = typeof b.hava === 'string' && ORTAM_TUR[b.hava];
     if (h) return h;
     if (b.zeminTur === 'kum') return 'dalga';              // kumsal: hava yok ama dalgalar var
@@ -691,11 +704,16 @@ const SES = (() => {
     senlik: { tini: 'celesta', cingirak: 1, arpHep: 1, tempo: 1.06, ton: 0 }
   };
   let MP = MUZIK_PROFIL.normal, mpBekleyen = null, adimSure = ADIM, mpAd = null;
+  const BIYOM_PROFIL = {
+    37: 'seker', 38: 'sonbahar', 39: 'isilti', 40: 'seker',
+    41: 'gokkusagi', 42: 'sakura', 43: 'kumsal', 44: 'uzay', 45: 'senlik'
+  };
   function profilSec(b, sonMu) {
     if (!b || typeof b !== 'object') return null;
     const h = b.hava, z = b.zeminTur, gece = !!b.gece, by = b.biyom | 0;
     if (by >= 21 || h || z) {                              // yalnız 2. tur bölümleri (eski 25 bölüm eski temasıyla kalır)
       if (sonMu && by >= 21) return 'senlik';
+      if (BIYOM_PROFIL[by]) return BIYOM_PROFIL[by];
       if (z === 'ay' || h === 'yildiztozu') return 'uzay';
       if (z === 'seker' || h === 'seker') return 'seker';
       if (h === 'kar' || h === 'karhafif' || z === 'kar' || z === 'buz') return gece ? 'karGece' : 'kar';
@@ -829,7 +847,7 @@ const SES = (() => {
     sonraSoyle(ad);
   }
   // yeni ortam/yardımcı cümleleri cihazda BİR KEZ söylenir (localStorage ile hatırlanır)
-  const KALICI = { baloncuk: 1, esinti: 1, kirkbitti: 0 };
+  const KALICI = { baloncuk: 1, esinti: 1, kirkbitti: 0, ellibitti: 0 };
   const DEPO = 'feza-piril-ucus-ses-dendi';
   let dendi = {};
   try { dendi = JSON.parse(localStorage.getItem(DEPO) || '{}') || {}; } catch (_) { dendi = {}; }
@@ -1150,14 +1168,14 @@ const SES = (() => {
       const kh = o && typeof o.kanatHak === 'number' ? o.kanatHak : (typeof veri.kanatHak === 'number' ? veri.kanatHak : 0);
       sonKanatHak = kh;
       const var_ = alan => !!(Array.isArray(veri[alan]) && veri[alan].length);
-      // yeni ortamın ilk açılışında (cihazda bir kez) sıcak bir cümle: biyom 21–35 → ortam26–ortam40
+      // yeni ortamın ilk açılışında (cihazda bir kez) sıcak bir cümle: biyom 21–45 → ortam26–ortam50
       const by = veri.biyom | 0, ortamAd = by >= 21 ? 'ortam' + (by + 5) : null;
       const ortamYeni = !!(ortamAd && CUMLE[ortamAd] && !dendi[ortamAd] && !tanitilan[ortamAd]);
       // bölüm başında tek tanıtım: son bölüm duyurusu > yeni kanat hakkı > bölümde İLK KEZ görülen şey (mantar, bulut, nilüfer, rüzgâr, halka, baloncuk, esinti)
       // (yeni ortamın kendi cümlesi son bölümü zaten duyuruyorsa 'final' söylenmez)
       const aday = [
         o && o.mekanik,
-        sonMu && !(ortamYeni && ortamAd === 'ortam40') ? 'final' : null,
+        sonMu && !(ortamYeni && ortamAd === 'ortam' + son) ? 'final' : null,
         var_('baloncuklar') ? 'baloncuk' : null, var_('esintiler') ? 'esinti' : null,   // yeni yardımcılar önce
         kh >= 4 ? 'ucusUstasi' : kh === 3 ? 'ucluKanat' : kh === 2 ? 'cifte' : null,
         var_('mantarlar') ? 'mantar' : null, var_('bulutlar') ? 'bulut' : null, var_('niluferler') ? 'nilufer' : null,
@@ -1196,8 +1214,8 @@ const SES = (() => {
       clearTimeout(birDahaZ);
       const eksik = o && typeof o.yildiz === 'number' && o.yildiz < 5;
       if (finalMi) {
-        // 40 bölümün sonu: "Kırk bölümün hepsini bitirdin!" (sayı değişirse genel kutlama cümlesi)
-        birDahaZ = setTimeout(() => sonraSoyle(son === 40 ? 'kirkbitti' : 'kutlama'), 1800);
+        // 50 (veya 40) bölümün sonu: özel bitirme cümlesi (sayı değişirse genel kutlama cümlesi)
+        birDahaZ = setTimeout(() => sonraSoyle(son === 50 ? 'ellibitti' : (son === 40 ? 'kirkbitti' : 'kutlama')), 1800);
       } else if (eksik && (kalanN++ % 3 === 0)) {           // 5'ten az yıldız: üç seferde bir "kalan yıldızları da toplayalım mı?"
         birDahaZ = setTimeout(() => sonraSoyle('kalanyildiz'), 2500);
       } else if (!tekSoz && (kavusN <= 2 || kavusN % 2 === 1)) {

@@ -2,7 +2,7 @@
 
 5 yaşındaki Feza için yapılmış, masal kitabı tarzında bir uçuş oyunu. Mor bebek ejderha **Pırıl** uçmayı yeni öğreniyor:
 iki ağaç arasındaki yaprak salıncaktan fırlıyor, yıldızları topluyor ve çayırın öbür ucunda piknik örtüsünde bekleyen köpeği
-**Bilbo**'ya kavuşuyor. 40 bölüm var; yağmurlu ormandan karlı köye, sakura gecesinden ay yüzeyine her biri başka bir yerde geçer. Kaybetmek yoktur: Pırıl ıskalarsa çimene yuvarlanır, silkinir, güler ve salıncağa döner.
+**Bilbo**'ya kavuşuyor. 50 bölüm var; yağmurlu ormandan karlı köye, su altı krallığından gökkuşağı karnavalına her biri başka bir yerde geçer. Kaybetmek yoktur: Pırıl ıskalarsa çimene yuvarlanır, silkinir, güler ve salıncağa döner.
 Feza okuma bilmediği için her şey resimlerle, simgelerle ve anlatıcının sesiyle anlatılır.
 
 **Oyna:** https://goktugkarpat.github.io/feza-piril-ucus/
@@ -38,6 +38,11 @@ sol üstteki küçük düğmeden açılır. Her bölümün altında kazanılan y
 | 18 | Yüzen Masal Adaları | 38 | Işıldayan Orman |
 | 19 | Altın Şafak Tapınağı | 39 | Gök Şatosu |
 | 20 | Dev Mantar | 40 | Kış Gecesi Şenliği |
+| 41 | Balon Vadisi | 46 | Gökkuşağı Şelalesi |
+| 42 | Müzik Çayırı | 47 | Origami Bahçesi |
+| 43 | Yel Değirmeni Tepesi | 48 | Deniz Feneri Koyu |
+| 44 | Su Altı Krallığı | 49 | Yıldız Gözlemevi |
+| 45 | Oyuncak Diyarı | 50 | Büyük Gökkuşağı Karnavalı |
 
 Kanat hakkı bölümlere göre artar: ilk iki bölümde yok, sonra 1, 2, 3 ve en çok 4.
 
@@ -109,7 +114,7 @@ Pırıl Bilbo'nun biraz önüne ya da arkasına inerse **Bilbo sevinçle ona ko�
 - **Kaybetmek, süre ya da can yok.** Iskalayınca Pırıl komikçe yuvarlanır ve salıncağa döner; ceza yoktur.
 - **Gizli yardım:** art arda denemelerde yıldızlar ve Bilbo, yakından geçen Pırıl'ı biraz daha güçlü çeker; erken ya da geç yapılan kanat dokunuşu da boşa gitmez.
 - **Yazı yok:** ekranda oyunun adı dışında sözcük yoktur. İpuçları resimlidir: çekmeyi gösteren el, havada dokunmayı gösteren kanat resmi.
-- **Ses:** anlatım doğal bir Türkçe kadın sesiyle önceden kaydedildi (50 kayıt); müzik ve efektler oyunun içinde üretilir.
+- **Ses:** anlatım doğal bir Türkçe kadın sesiyle önceden kaydedildi (61 kayıt); müzik ve efektler oyunun içinde üretilir.
   Övgü ara sıra ve çeşitlidir.
 - **İlerleme iPad'de saklanır:** açılan bölümler ve kazanılan yıldızlar oyunu kapatınca kaybolmaz.
 - **Küçük eller için:** sayfa kaymaz, yakınlaşmaz, uzun basınca menü açılmaz; ikinci bir parmak oyunu bozmaz. Yatay ve dikey tutuşta oynanır.
