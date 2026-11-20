@@ -1,6 +1,6 @@
 /* İnternetsiz çalışma. index.html önce ağdan, diğer dosyalar önce önbellekten.
-   Yalnız bu oyunun önbellekleri (feza-piril-ucus-) silinir; aynı sitedeki diğer oyunlara dokunulmaz. */
-const ONEK = 'feza-piril-ucus-';
+   Yalnız bu oyunun önbellekleri (piril-ucus-okulu-) silinir; aynı sitedeki diğer oyunlara dokunulmaz. */
+const ONEK = 'piril-ucus-okulu-';
 const CACHE = ONEK + 'v27';
 const SESLER = ['birdaha', 'giris', 'iska1', 'iska2', 'iska3', 'kanat', 'kavus1', 'kavus2', 'yildizlar',
   'cokcek', 'azcek', 'yukari', 'mantar', 'besyildiz', 'bolum1', 'bulut', 'nilufer', 'ruzgar', 'halka',

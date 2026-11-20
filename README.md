@@ -5,7 +5,7 @@ iki ağaç arasındaki yaprak salıncaktan fırlıyor, yıldızları topluyor ve
 **Bilbo**'ya kavuşuyor. 50 bölüm var; yağmurlu ormandan karlı köye, su altı krallığından gökkuşağı karnavalına her biri başka bir yerde geçer. Kaybetmek yoktur: Pırıl ıskalarsa çimene yuvarlanır, silkinir, güler ve salıncağa döner.
 Feza okuma bilmediği için her şey resimlerle, simgelerle ve anlatıcının sesiyle anlatılır.
 
-**Oyna:** https://goktugkarpat.github.io/feza-piril-ucus/
+**Oyna:** https://goktugkarpat.github.io/piril-ucus-okulu/
 
 ![Başlık ekranı](ekran/baslik.jpg)
 
@@ -79,7 +79,7 @@ Her biri ilk kez göründüğü bölümde tek başına ve kolay bir yerde tanıt
 
 ## Nasıl açılır
 
-- **İnternette:** https://goktugkarpat.github.io/feza-piril-ucus/
+- **İnternette:** https://goktugkarpat.github.io/piril-ucus-okulu/
 - **iPad'de uygulama gibi (önerilen):**
   1. iPad'de **Safari**'yi aç ve yukarıdaki adrese git.
   2. Üstteki **Paylaş** düğmesine dokun (kutudan çıkan ok).

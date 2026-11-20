@@ -3,7 +3,7 @@ Genel kurallar: `../CLAUDE.md`. 50 bölümlük yandan görünüşlü sapan/uçu�
 
 ## Dosyalar (yükleme sırası)
 `vendor/three.js` → `ses.js` (SES) → `cekirdek.js` (renderer/scene/camera, D, YC, OLAY, P, CEK) → `bolumler.js` (1–25) → `bolumler_b.js` (26–30) → `bolumler_c.js` (31–35) → `bolumler_d.js` (36–40) → `bolumler_e.js` (41–45) → `bolumler_f.js` (46–50) (hepsi `window.BOLUMLER`'e ekler; bölüm sayısı hiçbir yerde sabit yazılmaz, hep `BOLUMLER.length`) → `dunya.js` (gök, tepeler, salıncak, yardımcıların görünüşü, 20 eski biyom + eklenti altyapısı `DY_EK`; `DUNYA`) → `ortam_a.js … ortam_i.js` (25 yeni biyom, 21–45: her biri `DY_EK[n] = { palet, secenek, yardimci, yardimciKur, kur(ctx), guncelle(t,dt,ctx), sok(ctx) }`) → `hava.js` (yağmur, kar, şimşek, yaprak…; `HAVA`) → `piril.js` (Pırıl ve Bilbo, kıyafetler) → `efekt.js` (yol noktaları, yıldızlar, zemine göre iniş efektleri, konfeti, final fişekleri) → `arayuz.js` (başlık, kaydırılan 50 bölümlük harita, üst gösterge, ipuçları, kavuşma düğmeleri, madalyalar) → `oyun.js` (durum akışı, çek-bırak, fizik, `window.UCUS`).
-Sayfa: `index.html`, `style.css`. PWA: `manifest.webmanifest`, `sw.js` (önek `feza-piril-ucus-`; yeni dosya/ses eklenince `CORE`/`SESLER`'e ekle ve `CACHE` sürümünü artır), `icons/`. Sesler: `sesler/*.mp3` (61 kayıt; cümleler `ses.js` içindeki `/*SESLER*/` bloğunda, `gen_voice.py` kaydeder).
+Sayfa: `index.html`, `style.css`. PWA: `manifest.webmanifest`, `sw.js` (önek `piril-ucus-okulu-`; yeni dosya/ses eklenince `CORE`/`SESLER`'e ekle ve `CACHE` sürümünü artır), `icons/`. Sesler: `sesler/*.mp3` (61 kayıt; cümleler `ses.js` içindeki `/*SESLER*/` bloğunda, `gen_voice.py` kaydeder).
 
 ## Ortak adlar
 - Durumlar `P.durum`: `bekle | cek | ucus | yuvar | don | kavus`
@@ -31,4 +31,4 @@ Sayfa: `index.html`, `style.css`. PWA: `manifest.webmanifest`, `sw.js` (önek `f
 ## Test
 `index.html?sessiz` (her zaman), `&atla` başlığı geçer, `&oto` kendisi fırlatıp kavuşur, `&hiz=N`, `&bolum=N` (1–50), `&hepsiacik`, `&sw0` service worker'ı kapatır.
 Ekranlar: 1194×834, 834×1194, 1024×768, 768×1024. Düğmeler kenardan ≥5vh içeride.
-Gönderme: yalnız ebeveyn "yükle" deyince `yayinla.command` (depo `goktugkarpat/feza-piril-ucus`, doğrudan main).
+Gönderme: yalnız ebeveyn "yükle" deyince `yayinla.command` (depo `goktugkarpat/piril-ucus-okulu`, doğrudan main).
